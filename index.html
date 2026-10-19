@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pedidos de Paellas Online | Carta y Reservas</title>
+  
+  <!-- Tipografía moderna Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Estilos propios -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- 1. Barra superior informativa -->
+  <header class="top-notice-bar">
+    <span id="top-notice-text">⏰ Pedidos con antelación • Recogida en local y a domicilio</span>
+  </header>
+
+  <!-- 2. Cabecera principal / Marca -->
+  <section class="hero-header">
+    <div class="header-container">
+      <div class="brand-info">
+        <div class="brand-logo" style="width: auto; height: 48px; background: transparent; border: none; box-shadow: none; padding: 0;">
+          <img src="https://socarratt.com/wp-content/uploads/2025/07/cropped-logo_socarratt_v2.png" alt="Socarratt Valencian Food" style="height: 46px; object-fit: contain;" onerror="this.outerHTML='<span style=\'font-size:32px;\'>🥘</span>'">
+        </div>
+        <div class="brand-text">
+          <h1 id="restaurant-name">Socarratt Valencian Food</h1>
+          <p id="restaurant-tagline">Arroces tradicionales valencianos en Madrid para llevar y a domicilio</p>
+        </div>
+      </div>
+      
+      <div class="header-actions">
+        <span class="badge-status">Abierto para pedidos</span>
+        <!-- Botón de ajustes oculto para clientes normales (solo visible con ?admin o pulsando 3 veces el logo) -->
+        <button id="btn-open-config" class="btn-config" style="display: none;" title="Ajustes de administración">
+          ⚙️ Ajustes
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Selector de Entrega (Recoger en local vs A domicilio) -->
+  <div class="delivery-toggle-container">
+    <div class="delivery-selector-card">
+      <div>
+        <strong style="display: block; font-size: 0.95rem; margin-bottom: 2px;">¿Cómo deseas recibir tu comida?</strong>
+        <span class="delivery-info-text">Elige tu método de entrega para calcular el coste y los tiempos</span>
+      </div>
+      <div class="delivery-toggle-buttons">
+        <button id="btn-mode-pickup" class="delivery-type-btn active" type="button">
+          🏢 Recoger en tienda (10€/ración)
+        </button>
+        <button id="btn-mode-delivery-portions" class="delivery-type-btn" type="button">
+          🛵 Raciones a domicilio (13€/ración &bull; mín. 2)
+        </button>
+        <button id="btn-mode-delivery-whole" class="delivery-type-btn" type="button">
+          🥘 Paella grande a domicilio (mín. 6 pers &bull; desde 115€)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Pestañas de Categorías -->
+  <nav class="categories-nav">
+    <div class="tabs-wrapper" id="categories-tabs">
+      <!-- Se genera dinámicamente desde JS -->
+    </div>
+  </nav>
+
+  <!-- 5. Contenedor Principal: Grilla de Productos + Sidebar del Carrito -->
+  <main class="main-container">
+    <!-- Listado de platos -->
+    <section>
+      <div class="products-grid" id="products-container">
+        <!-- Renderizado dinámicamente desde data.js -->
+      </div>
+    </section>
+
+    <!-- Sidebar del Carrito (Visible en tablets y ordenadores) -->
+    <aside class="cart-sidebar">
+      <div class="cart-header">
+        <h2>
+          <span>🛒 Tu Pedido</span>
+        </h2>
+        <span id="cart-count-badge" class="cart-count-pill">0 artículos</span>
+      </div>
+
+      <!-- Estado vacío -->
+      <div id="cart-empty" class="cart-empty-state">
+        <div class="cart-empty-icon">🥘</div>
+        <p style="font-weight: 700; color: #374151; margin-bottom: 4px;">Tu pedido está vacío</p>
+        <p style="font-size: 0.82rem;">Selecciona una paella, raciones o entrantes para comenzar tu pedido.</p>
+      </div>
+
+      <!-- Lista de artículos añadidos -->
+      <div id="cart-items-container" class="cart-items-scroll" style="display: none;"></div>
+
+      <!-- Desglose de precios y botón -->
+      <div id="cart-summary-box" class="cart-summary" style="display: none;">
+        <div class="summary-row">
+          <span>Subtotal pedido</span>
+          <strong id="cart-subtotal">0.00 €</strong>
+        </div>
+        <div class="summary-total">
+          <span>Total a pagar</span>
+          <span class="total-amount" id="cart-total">0.00 €</span>
+        </div>
+
+        <button id="btn-open-checkout" class="btn-whatsapp-order">
+          <span>Continuar con el pedido</span>
+          <span>➔</span>
+        </button>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Pie de página con acceso para el equipo y cocina -->
+  <footer style="text-align: center; padding: 24px 16px 90px; font-size: 0.82rem; color: #9ca3af; border-top: 1px solid #f3f4f6; margin-top: 30px;">
+    <p style="font-weight: 600; color: #4b5563;">Socarratt Valencian Food &bull; Obrador Central en C/ Manuela Malasaña, 5 (Metro Bilbao, Madrid)</p>
+    <p style="margin-top: 8px;">
+      <a href="cocina.html" target="_blank" style="color: #ea580c; text-decoration: none; font-weight: 700; background: #fff7ed; padding: 4px 12px; border-radius: 9999px; border: 1px solid #fed7aa;">👨‍🍳 Panel de Cocina y Comandas</a>
+      &nbsp;&nbsp;
+      <a href="javascript:void(0)" onclick="requestAdminAccess()" style="color: #9ca3af; text-decoration: none;">⚙️ Ajustes</a>
+    </p>
+  </footer>
+
+  <!-- 6. Barra Flotante Inferior para Móviles -->
+  <div class="mobile-floating-bar" id="mobile-floating-bar">
+    <button class="mobile-floating-btn" id="mobile-checkout-btn">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span>🛒 Ver Pedido</span>
+        <span class="mobile-cart-badge" id="mobile-cart-count">0 platos</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span id="mobile-cart-total" style="font-size: 1.1rem;">0.00 €</span>
+        <span>➔</span>
+      </div>
+    </button>
+  </div>
+
+  <!-- 7. Modal para Selección de Raciones y Opciones -->
+  <div class="modal-overlay" id="add-modal">
+    <div class="modal-content">
+      <button class="modal-close-btn" onclick="closeModal('add-modal')">&times;</button>
+      <div id="add-modal-content">
+        <!-- Rellenado dinámicamente por JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Modal de Checkout / Datos de Entrega y WhatsApp -->
+  <div class="modal-overlay" id="checkout-modal">
+    <div class="modal-content">
+      <button class="modal-close-btn" onclick="closeModal('checkout-modal')">&times;</button>
+      
+      <div style="margin-bottom: 16px;">
+        <h2 style="font-size: 1.35rem; font-weight: 800; color: #111827;">Completar y Enviar Pedido</h2>
+        <p style="font-size: 0.85rem; color: #6b7280;">Introduce tus datos y te abriremos WhatsApp con el resumen listo para enviar.</p>
+      </div>
+
+      <!-- Desglose de lo pedido -->
+      <div id="checkout-summary-breakdown"></div>
+
+      <!-- Formulario de datos -->
+      <form id="checkout-form" onsubmit="event.preventDefault();">
+        <div class="form-group">
+          <label class="form-label" for="client-name">Nombre completo *</label>
+          <input type="text" id="client-name" class="form-input" placeholder="Ej: María García" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="client-phone">Teléfono de contacto (móvil) *</label>
+          <input type="tel" id="client-phone" class="form-input" placeholder="Ej: 612 345 678" required>
+        </div>
+
+        <!-- Tienda de recogida (solo visible en modalidad recogida) -->
+        <div id="checkout-store-group">
+          <div class="form-group">
+            <label class="form-label" for="pickup-store-select">Tienda Socarratt para recogida en Madrid *</label>
+            <select id="pickup-store-select" class="form-select">
+              <option value="Socarratt Malasaña (Calle Manuela Malasaña, 5)">📍 Malasaña — Calle Manuela Malasaña, 5</option>
+              <option value="Socarratt Chueca (Calle San Marcos, 2)">📍 Chueca — Calle San Marcos, 2</option>
+              <option value="Socarratt Chamberí (Calle Viriato, 14)">📍 Chamberí — Calle Viriato, 14</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Campos de dirección solo si es entrega a domicilio -->
+        <div id="checkout-address-group" style="display: none;">
+          <div class="form-group">
+            <label class="form-label" for="client-address-street">Dirección de entrega (Calle, Número, Piso/Puerta) *</label>
+            <input type="text" id="client-address-street" class="form-input" placeholder="Ej: Av. de Francia 24, 4º B">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="client-address-city">Población / Código Postal (opcional)</label>
+            <input type="text" id="client-address-city" class="form-input" placeholder="Ej: Valencia, 46023">
+          </div>
+        </div>
+
+        <!-- Selector de Día -->
+        <div class="form-group">
+          <label class="form-label">¿Para qué día es el pedido?</label>
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <button type="button" class="time-slot-pill date-option-pill active" data-date="today" style="flex:1;">Para Hoy</button>
+            <button type="button" class="time-slot-pill date-option-pill" data-date="tomorrow" style="flex:1;">Para Mañana</button>
+            <button type="button" class="time-slot-pill date-option-pill" data-date="custom" style="flex:1;">Otro día</button>
+          </div>
+          <div id="custom-date-picker" style="display: none; margin-top: 6px;">
+            <input type="date" id="custom-date-val" class="form-input">
+          </div>
+        </div>
+
+        <!-- Selector de Hora -->
+        <div class="form-group">
+          <label class="form-label">Hora deseada de recogida / entrega *</label>
+          <div class="time-slots-grid" id="time-slots-container">
+            <!-- Rellenado por JS -->
+          </div>
+        </div>
+
+        <!-- Notas adicionales -->
+        <div class="form-group">
+          <label class="form-label" for="client-notes">Observaciones o alergias (opcional)</label>
+          <textarea id="client-notes" class="form-textarea" rows="2" placeholder="Ej: Alergia a los mariscos, tocar al telefonillo 4B..."></textarea>
+        </div>
+
+        <!-- Aviso sobre paellera -->
+        <div class="pan-notice-box">
+          <span style="font-size: 1.2rem;">ℹ️</span>
+          <span id="pan-deposit-notice">Servimos en paellera con fianza retornable o en recipientes térmicos individuales.</span>
+        </div>
+
+        <!-- Botón de WhatsApp -->
+        <button type="button" id="btn-submit-whatsapp" class="btn-whatsapp-order">
+          <span style="font-size: 1.3rem;">💬</span>
+          <span>Enviar Pedido por WhatsApp</span>
+        </button>
+        <p style="text-align: center; font-size: 0.76rem; color: #6b7280; margin-top: 8px;">
+          Se abrirá WhatsApp con el mensaje estructurado. No se te cobrará nada hasta confirmarlo con el restaurante.
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <!-- 9. Modal de Autenticación de Administración (Protección con Contraseña) -->
+  <div class="modal-overlay" id="auth-modal">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <button class="modal-close-btn" onclick="closeModal('auth-modal')">&times;</button>
+      <div style="font-size: 2.2rem; margin-bottom: 8px;">🔒</div>
+      <h2 style="font-size: 1.25rem; font-weight: 800; color: #111827; margin-bottom: 6px;">Acceso Administrador</h2>
+      <p style="font-size: 0.82rem; color: #6b7280; margin-bottom: 16px;">
+        Introduce tu contraseña de Socarratt para abrir el panel de configuración.
+      </p>
+
+      <form id="auth-form" onsubmit="event.preventDefault(); verifyAdminPassword();">
+        <div class="form-group" style="text-align: left;">
+          <label class="form-label" for="auth-password-input">Contraseña:</label>
+          <input type="password" id="auth-password-input" class="form-input" placeholder="Introduce la contraseña" autocomplete="current-password" required>
+          <div id="auth-error-msg" style="color: #ef4444; font-size: 0.82rem; font-weight: 700; margin-top: 6px; display: none;">
+            ❌ Contraseña incorrecta. Inténtalo de nuevo.
+          </div>
+        </div>
+
+        <button type="submit" class="btn-whatsapp-order" style="background: #111827; margin-top: 14px; padding: 12px;">
+          Entrar a Ajustes
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 10. Modal de Configuración Rápida para el Dueño del Negocio -->
+  <div class="modal-overlay" id="config-modal">
+    <div class="modal-content">
+      <button class="modal-close-btn" onclick="closeModal('config-modal')">&times;</button>
+      <h2 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 6px;">Ajustes del Negocio (Socarratt)</h2>
+      <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 16px;">
+        Modifica aquí tu número de WhatsApp, estado y contraseña. Se guardarán en este navegador automáticamente.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label" for="cfg-phone">Tu número de WhatsApp (con prefijo internacional sin +):</label>
+        <input type="text" id="cfg-phone" class="form-input" placeholder="Ej: 34607169903">
+        <small style="color: #6b7280; font-size: 0.75rem;">A este número le llegarán todos los mensajes de los clientes.</small>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="cfg-status">Estado visible para clientes:</label>
+        <select id="cfg-status" class="form-select">
+          <option value="open">🟢 Abierto para pedidos</option>
+          <option value="closed">🔴 Cerrado temporalmente (solo consultas)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="cfg-password">Cambiar contraseña de administración:</label>
+        <input type="password" id="cfg-password" class="form-input" placeholder="Contraseña actual: 1234">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="cfg-name">Nombre de tu Arrocería / Negocio:</label>
+        <input type="text" id="cfg-name" class="form-input" placeholder="Ej: Socarratt Valencian Food">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="cfg-address">Dirección física del local (para recogidas):</label>
+        <input type="text" id="cfg-address" class="form-input" placeholder="Ej: Calle Manuela Malasaña 5 (Madrid)">
+      </div>
+
+      <button type="button" class="btn-whatsapp-order" style="background: #111827; margin-top: 18px;" onclick="saveConfigModal()">
+        💾 Guardar Cambios
+      </button>
+
+      <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+        <h3 style="font-size: 0.95rem; font-weight: 700; color: #111827; margin-bottom: 6px;">👨‍🍳 Panel de Cocina y Despacho</h3>
+        <p style="font-size: 0.78rem; color: #6b7280; margin-bottom: 12px;">
+          Tablón de comandas en tiempo real por tramos de 30 min (13:00, 13:30...) con control de bicis de carga y coches.
+        </p>
+        <a href="cocina.html" target="_blank" class="btn-whatsapp-order" style="background: #ea580c; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700;">
+          <span>📋 Abrir Tablón de Cocina (KDS)</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Archivos de Script -->
+  <script src="config.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

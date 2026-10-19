@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Cocina y Comandas | Socarratt Madrid (Manuela Malasaña 5)</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="cocina.css">
+</head>
+<body>
+
+  <!-- 1. Barra de control superior del KDS -->
+  <header class="kds-header">
+    <div class="kds-brand">
+      <div style="font-size: 2rem;">🥘</div>
+      <div>
+        <h1>Socarratt &bull; Control de Cocina y Expedición</h1>
+        <span>Obrador Central: Calle Manuela Malasaña, 5 (Metro Bilbao, Madrid)</span>
+      </div>
+    </div>
+
+    <div class="kds-actions">
+      <!-- Selector de fecha -->
+      <select id="kds-date-filter" class="btn-kds" style="background:#111827; border-color:#4b5563;">
+        <option value="today">📅 Comandas de Hoy</option>
+        <option value="tomorrow">📅 Comandas de Mañana</option>
+        <option value="all">📅 Ver todas las fechas</option>
+      </select>
+
+      <button id="btn-new-phone-order" class="btn-kds btn-kds-primary" title="Apuntar un pedido de cliente que llama por teléfono">
+        <span>➕</span> <span>Añadir pedido por teléfono</span>
+      </button>
+
+      <button id="btn-print-kds" class="btn-kds" title="Imprimir hoja de producción para el paellero">
+        <span>🖨️</span> <span>Imprimir</span>
+      </button>
+
+      <a href="index.html" class="btn-kds" style="text-decoration: none;">
+        <span>➔</span> <span>Carta Clientes</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- 2. KPIs de Producción del Día -->
+  <section class="kpi-row">
+    <div class="kpi-card" style="border-left: 4px solid var(--primary);">
+      <span class="kpi-label">Paellas Grandes al Fuego</span>
+      <span class="kpi-value" id="kpi-paellas-count">0</span>
+    </div>
+
+    <div class="kpi-card" style="border-left: 4px solid #38bdf8;">
+      <span class="kpi-label">Total Raciones Sueltas</span>
+      <span class="kpi-value" id="kpi-raciones-count">0</span>
+    </div>
+
+    <div class="kpi-card" style="border-left: 4px solid var(--bike-color);">
+      <span class="kpi-label">Bicis de Carga (Radio 15 min)</span>
+      <span class="kpi-value" id="kpi-bicis-count">0 / 3</span>
+    </div>
+
+    <div class="kpi-card" style="border-left: 4px solid var(--car-color);">
+      <span class="kpi-label">Coches en Ruta (Salir 30 min antes)</span>
+      <span class="kpi-value" id="kpi-coches-count">0</span>
+    </div>
+  </section>
+
+  <!-- 3. Tablón Horizontal de Tramas Horarias (cada media hora) -->
+  <main class="slots-container" id="kds-slots-grid">
+    <!-- Renderizado dinámico desde cocina.js (13:00, 13:30, 14:00, 14:30...) -->
+  </main>
+
+  <!-- 4. Modal para apuntar una llamada telefónica en 10 segundos -->
+  <div class="modal-overlay" id="manual-order-modal">
+    <div class="modal-content">
+      <button class="modal-close-btn" onclick="closeManualModal()">&times;</button>
+      <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 4px;">➕ Nueva Comanda por Teléfono</h2>
+      <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 16px;">
+        Apúntalo aquí para meterlo directamente en la franja horaria de cocina sin usar papel.
+      </p>
+
+      <form onsubmit="event.preventDefault(); saveManualPhoneOrder();">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label class="form-label">Nombre del cliente *</label>
+            <input type="text" id="m-client-name" class="form-input" placeholder="Ej: Javier López" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Teléfono móvil *</label>
+            <input type="tel" id="m-client-phone" class="form-input" placeholder="600 000 000" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label class="form-label">Tramo horario de entrega / salida *</label>
+            <select id="m-slot" class="form-select">
+              <option value="13:00">⏰ 13:00h</option>
+              <option value="13:30">⏰ 13:30h</option>
+              <option value="14:00" selected>⏰ 14:00h</option>
+              <option value="14:30">⏰ 14:30h</option>
+              <option value="15:00">⏰ 15:00h</option>
+              <option value="15:30">⏰ 15:30h</option>
+              <option value="16:00">⏰ 16:00h</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo de entrega *</label>
+            <select id="m-type" class="form-select" onchange="document.getElementById('m-address-group').style.display = this.value === 'pickup' ? 'none' : 'block'">
+              <option value="pickup">🏢 Recoger en Obrador (Malasaña 5)</option>
+              <option value="delivery_whole">🥘 Paella grande a domicilio</option>
+              <option value="delivery_portions">🛵 Raciones a domicilio</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" id="m-address-group" style="display: none;">
+          <label class="form-label">Dirección en Madrid (detecta si va en Bici o Coche):</label>
+          <input type="text" id="m-address" class="form-input" placeholder="Ej: C/ Fuencarral 40 (o CP 28004)">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label class="form-label">Variedad de Arroz *</label>
+            <select id="m-rice" class="form-select">
+              <option value="Paella Valenciana Tradicional">Paella Valenciana</option>
+              <option value="Arroz al Senyoret">Arroz al Senyoret</option>
+              <option value="Arroz al Horno (Arròs al Forn)">Arroz al Horno</option>
+              <option value="Arroz a Banda">Arroz a Banda</option>
+              <option value="Arroz Negro con Sepia">Arroz Negro</option>
+              <option value="Paella de la Abuela">Paella de la Abuela</option>
+              <option value="Paella Rústica">Paella Rústica</option>
+              <option value="Paella de Verduras">Paella de Verduras</option>
+              <option value="Fideuà de Gandía">Fideuà de Gandía</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Formato *</label>
+            <select id="m-format" class="form-select">
+              <option value="Paella grande para 6 personas">🥘 Paella grande (6p) - 115€</option>
+              <option value="Paella grande para 7 personas">🥘 Paella grande (7p) - 130€</option>
+              <option value="Paella grande para 8 personas">🥘 Paella grande (8p) - 145€</option>
+              <option value="Paella grande para 9 personas">🥘 Paella grande (9p) - 160€</option>
+              <option value="Paella grande para 10 personas">🥘 Paella grande (10p) - 175€</option>
+              <option value="1 ración individual">🍽️ 1 ración (10€)</option>
+              <option value="2 raciones individuales">🍽️ 2 raciones</option>
+              <option value="3 raciones individuales">🍽️ 3 raciones</option>
+              <option value="4 raciones individuales">🍽️ 4 raciones</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label class="form-label">Punto de cocción</label>
+            <select id="m-option" class="form-select">
+              <option value="Socarrat tostado">Socarrat tostado</option>
+              <option value="Punto estándar">Punto estándar</option>
+              <option value="Sin tostar">Sin tostar</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Total (€)</label>
+            <input type="number" id="m-total" class="form-input" placeholder="Ej: 115.00">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notas de cocina o repartidor (opcional):</label>
+          <input type="text" id="m-notes" class="form-input" placeholder="Ej: Sin pimiento, cambio de 50€...">
+        </div>
+
+        <button type="submit" class="btn-kds btn-kds-primary" style="width: 100%; justify-content: center; padding: 12px; margin-top: 10px;">
+          Guardar Comanda en Cocina
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="cocina.js"></script>
+</body>
+</html>
