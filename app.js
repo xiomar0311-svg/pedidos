@@ -956,13 +956,25 @@ function handleWhatsAppSubmit() {
       notes: item.notes || ""
     }));
 
+    const getIsoOffset = (offsetDays) => {
+      const d = new Date();
+      d.setDate(d.getDate() + offsetDays);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    let kdsOrderDate = getIsoOffset(0);
+    if (state.selectedDate === "tomorrow") {
+      kdsOrderDate = getIsoOffset(1);
+    } else if (state.selectedDate === "custom" && customDateInput && customDateInput.value) {
+      kdsOrderDate = customDateInput.value;
+    }
+
     const existingOrders = JSON.parse(localStorage.getItem("socarratt_orders") || "[]");
     existingOrders.unshift({
       id: `ord-web-${Date.now()}`,
       clientName: name,
       clientPhone: phone,
       slot: state.selectedTimeSlot,
-      date: state.selectedDate === "tomorrow" ? "tomorrow" : "today",
+      date: kdsOrderDate,
       type: state.deliveryType,
       vehicle: vehicle,
       address: fullAddress,

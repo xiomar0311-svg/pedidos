@@ -1,23 +1,29 @@
 /* ========================================================
-   ESTILOS DEL PANEL DE COCINA Y COMANDAS - SOCARRATT
+   ESTILOS DEL PANEL DE COCINA, EXPEDICIÓN Y CONTROL GPS - SOCARRATT
    Diseñado para tablet/pantalla de barra y cocina en Manuela Malasaña 5
    ======================================================== */
 
 :root {
   --primary: #d9531e;
   --primary-hover: #c04313;
-  --bg-dark: #111827;
-  --bg-card: #1f2937;
+  --bg-dark: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-inner: #0f172a;
   --text-light: #f9fafb;
-  --text-muted: #9ca3af;
-  --border: #374151;
+  --text-muted: #94a3b8;
+  --border: #334155;
   --status-pending: #f59e0b;
   --status-cooking: #3b82f6;
   --status-ready: #10b981;
+  --status-enroute: #f97316;
+  --status-returning: #06b6d4;
   --status-delivered: #6b7280;
   --bike-color: #06b6d4;
   --car-color: #ec4899;
   --pickup-color: #8b5cf6;
+  --sem-green: #10b981;
+  --sem-yellow: #f59e0b;
+  --sem-red: #ef4444;
 }
 
 * {
@@ -42,9 +48,9 @@ body {
   align-items: center;
   flex-wrap: wrap;
   gap: 14px;
-  padding-bottom: 16px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .kds-brand {
@@ -54,20 +60,20 @@ body {
 }
 
 .kds-brand h1 {
-  font-size: 1.35rem;
+  font-size: 1.3rem;
   font-weight: 800;
   letter-spacing: -0.5px;
 }
 
 .kds-brand span {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
 }
 
 .kds-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -75,19 +81,20 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border);
   color: var(--text-light);
-  padding: 9px 15px;
+  padding: 8px 13px;
   border-radius: 10px;
-  font-size: 0.88rem;
+  font-size: 0.83rem;
   font-weight: 700;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   transition: all 0.2s;
+  text-decoration: none;
 }
 
 .btn-kds:hover {
-  background: #374151;
+  background: #334155;
 }
 
 .btn-kds-primary {
@@ -100,35 +107,512 @@ body {
   background: var(--primary-hover);
 }
 
+.btn-kds-gps {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.btn-kds-gps.active {
+  background: #10b981;
+  color: #052e16;
+}
+
+/* --- BARRA DE NAVEGACIÓN DE FECHAS Y CALENDARIO --- */
+.date-nav-bar {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.date-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.date-quick-btn {
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: #cbd5e1;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.date-quick-btn:hover {
+  border-color: #64748b;
+  color: white;
+}
+
+.date-quick-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.calendar-input-group {
+  display: inline-flex;
+  align-items: center;
+  background: #0f172a;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  padding: 2px 4px;
+  gap: 4px;
+}
+
+.calendar-step-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 0.85rem;
+  border-radius: 6px;
+}
+
+.calendar-step-btn:hover {
+  background: #1e293b;
+  color: white;
+}
+
+.kds-date-input {
+  background: transparent;
+  border: none;
+  color: #38bdf8;
+  font-weight: 800;
+  font-size: 0.85rem;
+  padding: 4px 6px;
+  outline: none;
+  cursor: pointer;
+}
+
+.kds-date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+  cursor: pointer;
+}
+
+.active-date-banner {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* --- KPIs Y RESUMEN RÁPIDO DE COCINA --- */
 .kpi-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .kpi-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: 10px 14px;
   display: flex;
   flex-direction: column;
 }
 
 .kpi-label {
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
 .kpi-value {
-  font-size: 1.6rem;
+  font-size: 1.45rem;
   font-weight: 800;
   color: var(--text-light);
   margin-top: 2px;
+}
+
+.kpi-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* --- PANEL DE CONTROL DE REPARTIDORES Y MAPA GPS EN VIVO --- */
+.fleet-control-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 18px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+.fleet-control-section.hidden {
+  display: none;
+}
+
+.fleet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.fleet-title-box h2 {
+  font-size: 1.08rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fleet-title-box p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.fleet-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fleet-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.fleet-grid.map-expanded {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 1100px) {
+  .fleet-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gps-map-wrapper {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid #475569;
+  background: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+
+#kds-live-map {
+  width: 100%;
+  height: 430px;
+  z-index: 1;
+  cursor: grab;
+}
+
+#kds-live-map:active {
+  cursor: grabbing;
+}
+
+.fleet-grid.map-expanded #kds-live-map {
+  height: 600px;
+}
+
+.map-footer-legend {
+  background: #0f172a;
+  border-top: 1px solid #334155;
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.75rem;
+}
+
+.legend-items {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.legend-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.dot-circle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* LISTA DE TARJETAS DE REPARTIDORES EN VIVO */
+.riders-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 465px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.riders-cards-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.riders-cards-list::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 8px;
+}
+
+.rider-live-card {
+  background: var(--bg-card-inner);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.rider-live-card.sem-green {
+  border-left: 4px solid var(--sem-green);
+}
+
+.rider-live-card.sem-yellow {
+  border-left: 4px solid var(--sem-yellow);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.rider-live-card.sem-red {
+  border-left: 4px solid var(--sem-red);
+  background: rgba(239, 68, 68, 0.08);
+  animation: pulseDelayAlert 1.5s infinite;
+}
+
+@keyframes pulseDelayAlert {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35); }
+  50% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+}
+
+.rider-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.rider-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rider-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  background: #1e293b;
+  border: 1px solid #334155;
+}
+
+.rider-name {
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: white;
+}
+
+.rider-vehicle-tag {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  display: block;
+}
+
+/* SEMÁFORO PILL */
+.semaphore-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+.semaphore-badge.green {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.semaphore-badge.yellow {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+}
+
+.semaphore-badge.red {
+  background: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+  border: 1px solid #ef4444;
+}
+
+.semaphore-badge.idle {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+  border: 1px solid #475569;
+}
+
+/* CAJA DE TELEMETRÍA DE VIAJE DEL REPARTIDOR */
+.rider-trip-box {
+  background: #162032;
+  border: 1px solid #283548;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rider-phases-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.phase-box {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+
+.phase-box.active-phase {
+  border-color: #38bdf8;
+}
+
+.phase-box.late-phase {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.phase-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 700;
+  display: block;
+}
+
+.phase-timer {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: white;
+  font-variant-numeric: tabular-nums;
+}
+
+.rider-next-round-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px dashed rgba(56, 189, 248, 0.35);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.74rem;
+  color: #7dd3fc;
+  font-weight: 700;
+}
+
+.rider-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-mini {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  padding: 5px 9px;
+  border-radius: 6px;
+  font-size: 0.73rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+}
+
+.btn-mini:hover {
+  background: #334155;
+}
+
+.btn-mini-green {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.btn-mini-orange {
+  background: rgba(249, 115, 22, 0.2);
+  border-color: #f97316;
+  color: #fb923c;
+}
+
+.btn-mini-cyan {
+  background: rgba(6, 182, 212, 0.2);
+  border-color: #06b6d4;
+  color: #22d3ee;
+}
+
+.btn-mini-danger {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.btn-mini-danger:hover {
+  background: #ef4444;
+  color: white;
 }
 
 /* --- TRAMOS HORARIOS HORIZONTALES / COLUMNAS --- */
@@ -137,7 +621,7 @@ body {
   gap: 16px;
   overflow-x: auto;
   padding-bottom: 20px;
-  min-height: calc(100vh - 220px);
+  min-height: calc(100vh - 280px);
 }
 
 .slots-container::-webkit-scrollbar {
@@ -153,18 +637,24 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 16px;
-  min-width: 320px;
-  max-width: 340px;
-  flex: 0 0 320px;
+  min-width: 345px;
+  max-width: 365px;
+  flex: 0 0 350px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
 .slot-header {
-  background: #1e293b;
+  background: #162032;
   padding: 12px 14px;
   border-bottom: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.slot-header-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -179,13 +669,79 @@ body {
   gap: 6px;
 }
 
+.slot-cycle-explain {
+  font-size: 0.73rem;
+  color: #cbd5e1;
+  background: #0f172a;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border-left: 3px solid var(--primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .slot-badge {
   background: #334155;
-  color: #94a3b8;
-  font-size: 0.78rem;
+  color: #e2e8f0;
+  font-size: 0.75rem;
   font-weight: 800;
   padding: 2px 8px;
   border-radius: 9999px;
+}
+
+/* CAJA DE REPARTIDORES QUE LLEGAN PARA ESTA RONDA */
+.slot-riders-forecast {
+  background: #0f172a;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
+  font-size: 0.74rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.forecast-title {
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.forecast-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.forecast-pill {
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.forecast-pill.ready-base {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.forecast-pill.returning-ok {
+  background: rgba(6, 182, 212, 0.18);
+  color: #38bdf8;
+  border: 1px solid rgba(6, 182, 212, 0.4);
+}
+
+.forecast-pill.returning-late {
+  background: rgba(239, 68, 68, 0.22);
+  color: #f87171;
+  border: 1px solid #ef4444;
 }
 
 .slot-orders-list {
@@ -207,40 +763,171 @@ body {
 
 /* --- TARJETA DE COMANDA / TICKET --- */
 .ticket-card {
-  background: #111827;
-  border: 1px solid #374151;
+  background: #0f172a;
+  border: 1px solid #334155;
   border-radius: 12px;
-  padding: 14px;
+  padding: 13px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   transition: transform 0.15s, border-color 0.15s;
+  position: relative;
 }
 
 .ticket-card:hover {
   border-color: #64748b;
 }
 
+.ticket-card.ticket-delayed {
+  border: 1.5px solid #ef4444;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.25);
+}
+
 .ticket-header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: flex-start;
+  gap: 6px;
 }
 
 .ticket-client {
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 0.94rem;
   color: white;
 }
 
 .ticket-phone {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: #94a3b8;
+  display: block;
+}
+
+.ticket-top-tools {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-ticket-tool {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #cbd5e1;
+  width: 27px;
+  height: 27px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.78rem;
+  transition: all 0.15s;
+}
+
+.btn-ticket-tool:hover {
+  background: #334155;
+  color: white;
+}
+
+.btn-ticket-tool.delete:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: white;
+}
+
+/* VISTA PLEGADA COMPACTA (PAELLA + CALLE + PRECIO + ESTADO) */
+.ticket-compact-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.compact-row-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.compact-paella-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #fbbf24;
+  line-height: 1.3;
+}
+
+.compact-price-tag {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #10b981;
+  white-space: nowrap;
+}
+
+.compact-street-row {
+  font-size: 0.8rem;
+  color: #e2e8f0;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #162032;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border-left: 3px solid #38bdf8;
+}
+
+.compact-bottom-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.btn-collapse-toggle {
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: #cbd5e1;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-collapse-toggle:hover {
+  background: #334155;
+  color: white;
+}
+
+.ticket-details-collapsible {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #334155;
+}
+
+.ticket-card.collapsed .ticket-details-collapsible {
+  display: none;
+}
+
+.ticket-date-pill {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.3);
 }
 
 /* BADGES DE LOGÍSTICA (BICI, COCHE, RECOGIDA) */
 .logistics-pill {
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 800;
   padding: 3px 8px;
   border-radius: 6px;
@@ -269,12 +956,13 @@ body {
 }
 
 .ticket-timing-alert {
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   color: #cbd5e1;
   background: #1e293b;
-  padding: 5px 8px;
+  padding: 6px 8px;
   border-radius: 6px;
   border-left: 3px solid #38bdf8;
+  line-height: 1.35;
 }
 
 .timing-car {
@@ -285,12 +973,59 @@ body {
   border-left-color: #06b6d4;
 }
 
-/* DETALLE DE PLATOS DE LA COMANDA */
-.ticket-items {
-  background: #0f172a;
+/* CONTROL DE REPARTIDOR Y CRONÓMETRO DENTRO DEL TICKET */
+.ticket-rider-box {
+  background: #162032;
+  border: 1px solid #283548;
   border-radius: 8px;
   padding: 8px 10px;
-  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ticket-rider-select {
+  width: 100%;
+  background: #0f172a;
+  color: #f8fafc;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ticket-live-telemetry {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 4px;
+  border-top: 1px dashed #334155;
+  font-size: 0.75rem;
+}
+
+.telemetry-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.proof-badge {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+  padding: 4px 7px;
+  border-radius: 5px;
+  font-size: 0.72rem;
+}
+
+/* DETALLE DE PLATOS DE LA COMANDA */
+.ticket-items {
+  background: #090e17;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.83rem;
   border: 1px dashed #334155;
 }
 
@@ -313,21 +1048,22 @@ body {
   justify-content: space-between;
   align-items: center;
   padding-top: 8px;
-  border-top: 1px solid #1f2937;
+  border-top: 1px solid #1e293b;
+  gap: 6px;
 }
 
 .ticket-total {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 800;
   color: #10b981;
 }
 
-/* BOTÓN DE ESTADO DEL TICKET (EN ESPERA -> AL FUEGO -> LISTO) */
+/* BOTÓN DE ESTADO DEL TICKET */
 .ticket-status-btn {
   border: none;
   border-radius: 6px;
-  padding: 5px 10px;
-  font-size: 0.78rem;
+  padding: 6px 10px;
+  font-size: 0.76rem;
   font-weight: 800;
   cursor: pointer;
   transition: all 0.15s;
@@ -357,20 +1093,65 @@ body {
   border: 1px solid #10b981;
 }
 
+.status-enroute {
+  background: rgba(249, 115, 22, 0.25);
+  color: #fb923c;
+  border: 1px solid #f97316;
+}
+
+.status-returning {
+  background: rgba(6, 182, 212, 0.25);
+  color: #38bdf8;
+  border: 1px solid #06b6d4;
+}
+
 .status-delivered {
   background: #334155;
   color: #94a3b8;
   border: 1px solid #475569;
 }
 
-/* --- MODAL DE NUEVA COMANDA MANUAL (LLAMADA TELEFÓNICA) --- */
+/* MARCADORES PERSONALIZADOS DEL MAPA GPS (COMPACTOS Y NÍTIDOS) */
+.gps-marker-pin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 11px;
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.45);
+  border: 2px solid #fff;
+  white-space: nowrap;
+  padding: 3px 8px;
+  transform: translate(-50%, -50%);
+}
+
+.dest-marker-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #0f172a;
+  color: #fff;
+  border: 2px solid #f59e0b;
+  border-radius: 8px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  transform: translate(-50%, -50%);
+}
+
+/* --- MODALES --- */
 .modal-overlay {
   display: none;
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(4px);
-  z-index: 1000;
+  z-index: 2000;
   align-items: center;
   justify-content: center;
   padding: 16px;
@@ -384,7 +1165,7 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 16px;
-  max-width: 540px;
+  max-width: 560px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -408,11 +1189,11 @@ body {
 .form-input, .form-select, .form-textarea {
   width: 100%;
   padding: 10px 12px;
-  background: #111827;
+  background: #0f172a;
   border: 1px solid var(--border);
   border-radius: 8px;
   color: white;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   outline: none;
 }
 

@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="leaflet.css">
+  <title>App Repartidor GPS | Socarratt Madrid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #d9531e;
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --border: #334155;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --cyan: #06b6d4;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: #f8fafc;
+      min-height: 100vh;
+      padding: 14px;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 12px 14px;
+      border-radius: 14px;
+      margin-bottom: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand h1 {
+      font-size: 1rem;
+      font-weight: 800;
+    }
+
+    .brand span {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      display: block;
+    }
+
+    .gps-pill {
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid #10b981;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .rider-select {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 10px;
+      background: #0f172a;
+      color: white;
+      border: 1px solid #475569;
+      font-size: 0.95rem;
+      font-weight: 800;
+      margin-top: 6px;
+    }
+
+    .timer-banner {
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+      text-align: center;
+      border: 2px solid var(--green);
+      background: rgba(16, 185, 129, 0.12);
+    }
+
+    .timer-banner.yellow {
+      border-color: var(--yellow);
+      background: rgba(245, 158, 11, 0.15);
+    }
+
+    .timer-banner.red {
+      border-color: var(--red);
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    .timer-big {
+      font-size: 2.1rem;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      margin: 4px 0;
+    }
+
+    .step-btn {
+      width: 100%;
+      padding: 15px;
+      border-radius: 12px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 10px;
+      transition: transform 0.1s;
+    }
+
+    .step-btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-depart {
+      background: #f97316;
+      color: white;
+    }
+
+    .btn-delivered {
+      background: #10b981;
+      color: #052e16;
+    }
+
+    .btn-returned {
+      background: #38bdf8;
+      color: #082f49;
+    }
+
+    .btn-maps {
+      width: 100%;
+      padding: 11px;
+      border-radius: 10px;
+      background: #0f172a;
+      color: #38bdf8;
+      border: 1px solid #38bdf8;
+      font-weight: 800;
+      font-size: 0.85rem;
+      text-decoration: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .proof-input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      background: #0f172a;
+      border: 1.5px solid #475569;
+      color: white;
+      font-size: 0.9rem;
+      margin-top: 8px;
+    }
+
+    .next-round-alert {
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px dashed #38bdf8;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 0.82rem;
+      color: #bae6fd;
+      margin-top: 12px;
+    }
+
+    .sim-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .sim-btn {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <div class="brand">
+      <span style="font-size: 1.6rem;">🛵</span>
+      <div>
+        <h1>Socarratt &bull; App Repartidor</h1>
+        <span>Base: C/ Manuela Malasaña, 5</span>
+      </div>
+    </div>
+    <span class="gps-pill" id="gps-status-badge">📡 Conectado con Cocina</span>
+  </div>
+
+  <!-- Selección de Repartidor y Control de Turno en 2º Plano -->
+  <div class="card">
+    <label style="font-size: 0.78rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">
+      👤 Tu Perfil de Repartidor en Turno:
+    </label>
+    <select id="rider-selector" class="rider-select"></select>
+
+    <!-- Panel de Turno Activo en 2º Plano -->
+    <div id="shift-control-box" style="margin-top:12px; padding:12px; border-radius:12px; background:#0f172a; border:1.5px solid #334155;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div>
+          <div id="shift-status-title" style="font-size:0.86rem; font-weight:800; color:#f8fafc;">
+            ⚪ Turno sin iniciar
+          </div>
+          <div id="rider-coords-text" style="font-size:0.74rem; color:#94a3b8; margin-top:2px;">
+            📍 Pulsa "Iniciar Turno" al empezar la jornada
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button id="btn-start-shift" onclick="startRiderShift()" style="flex:1; background:#10b981; color:#052e16; border:none; padding:12px 10px; border-radius:10px; font-size:0.86rem; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+          🟢 INICIAR TURNO (GPS 2º PLANO)
+        </button>
+        <button id="btn-stop-shift" onclick="stopRiderShift()" style="display:none; background:#ef4444; color:#fff; border:none; padding:12px 14px; border-radius:10px; font-size:0.82rem; font-weight:800; cursor:pointer;">
+          🔴 Cerrar Turno
+        </button>
+      </div>
+
+      <div id="shift-bg-hint" style="display:none; margin-top:8px; font-size:0.72rem; color:#34d399; display:flex; justify-content:space-between; align-items:center;">
+        <span>🛰️ Manteniendo GPS activo aunque abras Google Maps o bloquees</span>
+        <button onclick="togglePocketMode(true)" style="background:#1e293b; color:#38bdf8; border:1px solid #38bdf8; padding:3px 8px; border-radius:6px; font-size:0.7rem; font-weight:800; cursor:pointer;">
+          🌙 Modo Bolsillo
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pantalla Negra de Modo Bolsillo (evita toques accidentales y mantiene GPS 100% vivo) -->
+  <div id="pocket-mode-overlay" onclick="togglePocketMode(false)" style="display:none; position:fixed; inset:0; background:#000000; z-index:9999; flex-direction:column; justify-content:center; align-items:center; color:#475569; text-align:center; padding:24px; user-select:none;">
+    <div style="font-size:2.5rem; margin-bottom:10px;">🛰️</div>
+    <div style="font-size:1rem; font-weight:800; color:#10b981;">MODO BOLSILLO ACTIVO (EN TURNO)</div>
+    <div style="font-size:0.8rem; margin-top:6px; max-width:280px;">
+      Tu GPS se está enviando en vivo a Cocina ahorrando batería.<br><br>
+      <strong style="color:#94a3b8;">Toca cualquier parte de la pantalla para ver tus botones de entrega.</strong>
+    </div>
+  </div>
+
+  <!-- Contenedor Dinámico de la Ruta Activa -->
+  <div id="active-mission-container"></div>
+
+  <!-- Mapa Navegador GPS Integrado (para llevar en el soporte de la bici sin salir de la web) -->
+  <div class="card" style="padding:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <span style="font-size:0.8rem; font-weight:800; color:#38bdf8;">🗺️ Mapa Callejero en Vivo (Modo Soporte Bici)</span>
+      <button onclick="centerRiderNavMap()" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8; padding:4px 8px; border-radius:6px; font-size:0.72rem; font-weight:800; cursor:pointer;">
+        🎯 Centrar en mí
+      </button>
+    </div>
+    <div id="rider-nav-map" style="width:100%; height:250px; border-radius:12px; border:1px solid #334155; overflow:hidden;"></div>
+    <div style="font-size:0.71rem; color:#94a3b8; margin-top:6px; text-align:center;">
+      💡 Si llevas este mapa en el soporte de la bici, no se apaga la pantalla y Cocina ve tu posición en todo momento.
+    </div>
+  </div>
+
+  <!-- Controles rápidos para probar cómo ve Cocina los cambios de posición -->
+  <div class="card" style="background:#0b1120; border-style:dashed;">
+    <div style="font-size:0.75rem; font-weight:800; color:#94a3b8; margin-bottom:4px;">
+      🧪 Mover mi posición de prueba en el mapa de Cocina:
+    </div>
+    <div class="sim-bar">
+      <button class="sim-btn" onclick="simulatePosition('base')">📍 En Obrador (Malasaña 5)</button>
+      <button class="sim-btn" onclick="simulatePosition('mid_out')">🛵 A mitad de camino (Ida)</button>
+      <button class="sim-btn" onclick="simulatePosition('client')">🏢 En portal del Cliente</button>
+      <button class="sim-btn" onclick="simulatePosition('mid_return')">🔄 Volviendo al Local</button>
+    </div>
+    <a href="cocina.html" style="display:block; text-align:center; margin-top:10px; font-size:0.78rem; color:#38bdf8; text-decoration:none; font-weight:700;">
+      ⬅ Abrir Tablón de Cocina y Expedición
+    </a>
+  </div>
+
+  <script src="leaflet.js"></script>
+  <script src="mqtt.min.js"></script>
+  <script>
+    const OBRADOR_COORDS = { lat: 40.4288, lng: -3.7042 };
+    const MQTT_STATE_TOPIC = "socarratt/madrid/malasana5/state_v3";
+    const MQTT_PATCH_TOPIC = "socarratt/madrid/malasana5/patch_v3";
+    const MQTT_RIDER_GPS_PREFIX = "socarratt/madrid/malasana5/rider_gps/";
+    const liveChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("socarratt_live_channel") : null;
+    let mqttClient = null;
+    let lastServerSeq = 0;
+    let lastLocalGpsSentMs = 0;
+    let gpsWatchId = null;
+    let lastRenderedSignature = "";
+    let wakeLockSentinel = null;
+
+    const FALLBACK_RIDERS = [
+      { id: "rider-1792700056526", name: "XIOMAR", vehicle: "bike", phone: "34607169903", lat: 40.4288, lng: -3.7042, gpsActive: true },
+      { id: "rider-bici-1", name: "Dani (Bici 1)", vehicle: "bike", phone: "34611223301", lat: 40.4258, lng: -3.7018 },
+      { id: "rider-bici-2", name: "Álex (Bici 2)", vehicle: "bike", phone: "34611223302", lat: 40.4288, lng: -3.7042 },
+      { id: "rider-bici-3", name: "Javi (Bici 3)", vehicle: "bike", phone: "34611223303", lat: 40.4288, lng: -3.7042 },
+      { id: "rider-coche-1", name: "Marcos (Coche 1)", vehicle: "car", phone: "34611223304", lat: 40.4480, lng: -3.6930 },
+      { id: "rider-coche-2", name: "Roberto (Coche 2)", vehicle: "car", phone: "34611223305", lat: 40.4288, lng: -3.7042 }
+    ];
+
+    let riders = [];
+    let orders = [];
+    let selectedRiderId = localStorage.getItem("socarratt_selected_rider_id") || "";
+
+    function getSavedRiderGps(riderId) {
+      try {
+        const raw = localStorage.getItem("socarratt_my_gps_" + riderId);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function saveRiderGpsLocally(riderObj) {
+      if (!riderObj || !riderObj.id) return;
+      try {
+        if (riderObj.gpsActive || riderObj.onShift) {
+          localStorage.setItem("socarratt_my_gps_" + riderObj.id, JSON.stringify({
+            lat: Number(riderObj.lat),
+            lng: Number(riderObj.lng),
+            gpsActive: Boolean(riderObj.gpsActive),
+            onShift: Boolean(riderObj.onShift),
+            shiftTimeStr: riderObj.shiftTimeStr || "",
+            vehicle: riderObj.vehicle || "bike",
+            ts: Date.now()
+          }));
+        } else {
+          localStorage.removeItem("socarratt_my_gps_" + riderObj.id);
+        }
+      } catch (e) {}
+    }
+
+    function loadData() {
+      try {
+        riders = JSON.parse(localStorage.getItem("socarratt_riders") || "[]");
+        orders = JSON.parse(localStorage.getItem("socarratt_orders") || "[]");
+      } catch (e) {
+        riders = [];
+        orders = [];
+      }
+      if (riders.length === 0) {
+        riders = [...FALLBACK_RIDERS];
+      }
+      // Restaurar siempre el GPS y estado de turno guardado localmente de cada repartidor
+      riders = riders.map(r => {
+        const savedGps = getSavedRiderGps(r.id);
+        if (savedGps && (savedGps.gpsActive || savedGps.onShift)) {
+          return {
+            ...r,
+            lat: savedGps.lat,
+            lng: savedGps.lng,
+            gpsActive: Boolean(savedGps.gpsActive),
+            onShift: Boolean(savedGps.onShift),
+            shiftTimeStr: savedGps.shiftTimeStr || r.shiftTimeStr || ""
+          };
+        }
+        return r;
+      });
+    }
+
+    function sendRiderPatch(riderObj, orderObj, focusMap = true) {
+      lastLocalGpsSentMs = Date.now();
+      if (riderObj) {
+        saveRiderGpsLocally(riderObj);
+      }
+      localStorage.setItem("socarratt_riders", JSON.stringify(riders));
+      localStorage.setItem("socarratt_orders", JSON.stringify(orders));
+
+      const patchPayload = {
+        patchId: "patch-" + Date.now() + "-" + Math.random().toString(16).slice(2, 7),
+        focusMap: focusMap
+      };
+
+      if (riderObj) {
+        patchPayload.patchRider = {
+          id: riderObj.id,
+          name: riderObj.name,
+          vehicle: riderObj.vehicle || "bike",
+          phone: riderObj.phone || "",
+          lat: Number(riderObj.lat),
+          lng: Number(riderObj.lng),
+          gpsActive: Boolean(riderObj.gpsActive),
+          onShift: riderObj.onShift !== undefined ? Boolean(riderObj.onShift) : Boolean(riderObj.gpsActive),
+          shiftTimeStr: riderObj.shiftTimeStr || formatClock(Date.now()),
+          forceResetGps: !riderObj.gpsActive && !riderObj.onShift
+        };
+      }
+
+      if (orderObj) {
+        patchPayload.patchOrder = {
+          id: orderObj.id,
+          status: orderObj.status,
+          departedAt: orderObj.departedAt,
+          deliveredToClientAt: orderObj.deliveredToClientAt,
+          returnedToStoreAt: orderObj.returnedToStoreAt,
+          deliveryProof: orderObj.deliveryProof || ""
+        };
+      }
+
+      const jsonStr = JSON.stringify(patchPayload);
+
+      // 1. BroadcastChannel (si está en el mismo navegador)
+      if (liveChannel) {
+        liveChannel.postMessage({ type: "RIDER_PATCH", payload: patchPayload });
+      }
+
+      // 2. MQTT en tiempo real hacia Cocina (con RETAIN en el canal individual del repartidor para que nunca se pierda al recargar)
+      if (mqttClient && mqttClient.connected) {
+        mqttClient.publish(MQTT_PATCH_TOPIC, jsonStr, { qos: 1, retain: false });
+        if (riderObj) {
+          mqttClient.publish(MQTT_RIDER_GPS_PREFIX + riderObj.id, jsonStr, { qos: 1, retain: true });
+        }
+        const badge = document.getElementById("gps-status-badge");
+        if (badge) {
+          badge.textContent = "🟢 GPS Fijo en Cocina";
+        }
+      }
+
+      // 3. Servidor local (si se usa modo servidor local)
+      if (!window.location.hostname.includes("github.io")) {
+        fetch("/api/state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: jsonStr
+        })
+          .then(r => r.json())
+          .then(res => {
+            if (res && res.seq) lastServerSeq = res.seq;
+            const badge = document.getElementById("gps-status-badge");
+            if (badge) {
+              badge.textContent = "🟢 GPS Fijo en Cocina";
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
+    function populateRiderDropdown() {
+      const selectEl = document.getElementById("rider-selector");
+      if (!selectEl || riders.length === 0) return;
+
+      const params = new URLSearchParams(window.location.search);
+      const paramRider = params.get("rider");
+      const savedId = localStorage.getItem("socarratt_selected_rider_id");
+
+      if (paramRider && riders.some(r => r.id === paramRider)) {
+        selectedRiderId = paramRider;
+      } else if (savedId && riders.some(r => r.id === savedId)) {
+        selectedRiderId = savedId;
+      } else if (!selectedRiderId || !riders.some(r => r.id === selectedRiderId)) {
+        const xiomar = riders.find(r => r.name && r.name.toUpperCase().includes("XIOMAR"));
+        selectedRiderId = xiomar ? xiomar.id : riders[0].id;
+      }
+
+      localStorage.setItem("socarratt_selected_rider_id", selectedRiderId);
+
+      selectEl.innerHTML = riders.map(r => {
+        const icon = r.vehicle === "bike" ? "🚲" : r.vehicle === "car" ? "🚗" : "🛵";
+        return `<option value="${r.id}" ${r.id === selectedRiderId ? "selected" : ""}>${icon} ${r.name}</option>`;
+      }).join("");
+    }
+
+    function applyIncomingServerState(data) {
+      if (!data || !Array.isArray(data.orders) || !Array.isArray(data.riders)) return;
+
+      orders = data.orders;
+      riders = data.riders.map(srvRider => {
+        // Nunca dejar que un estado antiguo sin GPS borre la ubicación guardada en este móvil
+        const savedGps = getSavedRiderGps(srvRider.id);
+        if (savedGps && savedGps.gpsActive && srvRider.id === selectedRiderId) {
+          return {
+            ...srvRider,
+            lat: savedGps.lat,
+            lng: savedGps.lng,
+            gpsActive: true
+          };
+        }
+        return srvRider;
+      });
+
+      localStorage.setItem("socarratt_orders", JSON.stringify(orders));
+      localStorage.setItem("socarratt_riders", JSON.stringify(riders));
+      populateRiderDropdown();
+      renderMission(false);
+    }
+
+    function pollServerState() {
+      if (window.location.hostname.includes("github.io")) return;
+      const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 3000) : null;
+
+      fetch("/api/state?t=" + Date.now(), {
+        cache: "no-store",
+        signal: controller ? controller.signal : undefined
+      })
+        .then(r => {
+          if (timeoutId) clearTimeout(timeoutId);
+          return r.json();
+        })
+        .then(data => {
+          if (data && Array.isArray(data.orders) && Array.isArray(data.riders)) {
+            if (!data.seq || data.seq !== lastServerSeq) {
+              lastServerSeq = data.seq || 1;
+              applyIncomingServerState(data);
+            }
+          }
+        })
+        .catch(() => {
+          if (timeoutId) clearTimeout(timeoutId);
+        });
+    }
+
+    function initRealtimeSync() {
+      // 1. Sincronización suave cada 3.5 segundos contra el servidor HTTP/HTTPS
+      pollServerState();
+      setInterval(pollServerState, 3500);
+
+      // 2. Conectar por MQTT WebSockets para sincronizar al instante con el PC de Cocina
+      if (typeof mqtt !== "undefined") {
+        try {
+          mqttClient = mqtt.connect("wss://broker.emqx.io:8084/mqtt", {
+            clientId: "socarratt_rider_" + Math.random().toString(16).slice(2, 10),
+            clean: true,
+            connectTimeout: 4000,
+            reconnectPeriod: 2500
+          });
+
+          mqttClient.on("connect", () => {
+            mqttClient.subscribe(MQTT_STATE_TOPIC, { qos: 0 });
+            document.getElementById("gps-status-badge").textContent = "🟢 En Vivo con Cocina";
+            // Re-enviar posición guardada al reconectar para asegurar que Cocina siempre la tenga
+            const me = riders.find(r => r.id === selectedRiderId);
+            if (me && me.gpsActive) {
+              sendRiderPatch(me, null, false);
+            }
+          });
+
+          mqttClient.on("message", (topic, message) => {
+            if (topic !== MQTT_STATE_TOPIC) return;
+            try {
+              const data = JSON.parse(message.toString());
+              applyIncomingServerState(data);
+            } catch (e) {}
+          });
+        } catch (err) {}
+      }
+    }
+
+    function addMinutesToSlot(slotStr, minutesToAdd) {
+      if (!slotStr || !slotStr.includes(":")) return "";
+      const [hh, mm] = slotStr.split(":").map(Number);
+      const totalMin = hh * 60 + mm + minutesToAdd;
+      return `${String(Math.floor(totalMin / 60)).padStart(2, "0")}:${String(totalMin % 60).padStart(2, "0")}`;
+    }
+
+    function formatClock(ms) {
+      if (!ms) return "--:--";
+      const d = new Date(ms);
+      return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    }
+
+    async function requestWakeLock() {
+      if ("wakeLock" in navigator && document.visibilityState === "visible") {
+        try {
+          wakeLockSentinel = await navigator.wakeLock.request("screen");
+        } catch (e) {}
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadData();
+      populateRiderDropdown();
+
+      const selectEl = document.getElementById("rider-selector");
+      selectEl.addEventListener("change", (e) => {
+        selectedRiderId = e.target.value;
+        localStorage.setItem("socarratt_selected_rider_id", selectedRiderId);
+        // Restaurar GPS guardado para este repartidor o activarlo si ya estaba activo
+        const me = riders.find(r => r.id === selectedRiderId);
+        const savedGps = getSavedRiderGps(selectedRiderId);
+        if (me && savedGps && savedGps.gpsActive) {
+          me.lat = savedGps.lat;
+          me.lng = savedGps.lng;
+          me.gpsActive = true;
+          sendRiderPatch(me, null, true);
+        } else if (localStorage.getItem("socarratt_gps_auto_enabled") === "1") {
+          activateRealPhoneGps(true);
+        }
+        renderMission(true);
+      });
+
+      window.addEventListener("storage", () => {
+        loadData();
+        renderMission(false);
+      });
+
+      if (liveChannel) {
+        liveChannel.onmessage = () => {
+          loadData();
+          renderMission(false);
+        };
+      }
+
+      // Al volver a la pestaña del móvil (o desbloquear pantalla), re-sincronizar GPS automáticamente
+      const onReturnToApp = () => {
+        if (document.visibilityState === "visible") {
+          requestWakeLock();
+          const me = riders.find(r => r.id === selectedRiderId);
+          if (me && me.gpsActive) {
+            sendRiderPatch(me, null, false);
+          }
+          if (localStorage.getItem("socarratt_gps_auto_enabled") === "1") {
+            activateRealPhoneGps(true);
+          }
+          pollServerState();
+        }
+      };
+
+      document.addEventListener("visibilitychange", onReturnToApp);
+      window.addEventListener("pageshow", onReturnToApp);
+      window.addEventListener("focus", onReturnToApp);
+
+      initRiderNavMap();
+      initRealtimeSync();
+      renderMission(true);
+      setInterval(() => renderMission(false), 3000);
+
+      // Si el repartidor ya había activado el GPS antes de recargar o salir, reactivarlo solo
+      if (localStorage.getItem("socarratt_gps_auto_enabled") === "1") {
+        activateRealPhoneGps(true);
+      } else {
+        const me = riders.find(r => r.id === selectedRiderId);
+        if (me && me.gpsActive) {
+          sendRiderPatch(me, null, false);
+        }
+      }
+    });
+
+    function haversineKm(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const straightKm = R * c;
+      if (straightKm <= 0.05) return 0;
+      let roadFactor;
+      if (straightKm <= 2.6) {
+        roadFactor = 1.57;
+      } else if (straightKm >= 6.5) {
+        roadFactor = 1.31;
+      } else {
+        const t = (straightKm - 2.6) / (6.5 - 2.6);
+        roadFactor = 1.57 - t * (1.57 - 1.31);
+      }
+      return Math.round(straightKm * roadFactor * 10) / 10;
+    }
+
+    function calculateMadridTravelTimes(distKm) {
+      if (!distKm || distKm <= 0.1) return { carMin: 1, bikeMin: 1 };
+      const carMin = distKm <= 4.0
+        ? Math.max(3, Math.round(distKm * 3.15))
+        : Math.round(12.0 + (distKm - 4.0) * 0.42);
+      const bikeMin = Math.max(2, Math.round(distKm * 3.7));
+      return { carMin, bikeMin };
+    }
+
+    let riderNavMap = null;
+    let riderSelfMarker = null;
+    let riderDestMarker = null;
+    let riderRouteLine = null;
+
+    function initRiderNavMap() {
+      const mapEl = document.getElementById("rider-nav-map");
+      if (!mapEl || typeof L === "undefined" || riderNavMap) return;
+
+      riderNavMap = L.map("rider-nav-map", {
+        center: [OBRADOR_COORDS.lat, OBRADOR_COORDS.lng],
+        zoom: 15,
+        zoomControl: true
+      });
+
+      L.tileLayer("https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=es", {
+        maxZoom: 20,
+        attribution: "Google Maps"
+      }).addTo(riderNavMap);
+
+      const baseIcon = L.divIcon({
+        className: "",
+        html: `<div style="background:#d9531e;color:#fff;font-weight:900;font-size:11px;padding:3px 7px;border-radius:99px;border:2px solid #fff;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);">🥘 Obrador Malasaña 5</div>`,
+        iconSize: [0, 0]
+      });
+      L.marker([OBRADOR_COORDS.lat, OBRADOR_COORDS.lng], { icon: baseIcon }).addTo(riderNavMap);
+    }
+
+    function updateRiderNavMap(rider, activeOrder) {
+      if (!riderNavMap || typeof L === "undefined") return;
+      const rLat = Number(rider.lat) || OBRADOR_COORDS.lat;
+      const rLng = Number(rider.lng) || OBRADOR_COORDS.lng;
+
+      const selfIcon = L.divIcon({
+        className: "",
+        html: `<div style="background:#10b981;color:#052e16;font-weight:900;font-size:12px;padding:4px 9px;border-radius:99px;border:2px solid #fff;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,0.6);">🚲 Tú (${rider.name})</div>`,
+        iconSize: [0, 0]
+      });
+
+      if (riderSelfMarker) {
+        riderSelfMarker.setLatLng([rLat, rLng]);
+        riderSelfMarker.setIcon(selfIcon);
+      } else {
+        riderSelfMarker = L.marker([rLat, rLng], { icon: selfIcon, zIndexOffset: 500 }).addTo(riderNavMap);
+      }
+
+      if (activeOrder && activeOrder.lat && activeOrder.lng && activeOrder.status !== "returning") {
+        const destIcon = L.divIcon({
+          className: "",
+          html: `<div style="background:#0284c7;color:#fff;font-weight:800;font-size:11px;padding:3px 8px;border-radius:8px;border:2px solid #fff;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);">📍 ${activeOrder.address}</div>`,
+          iconSize: [0, 0]
+        });
+        if (riderDestMarker) {
+          riderDestMarker.setLatLng([activeOrder.lat, activeOrder.lng]);
+          riderDestMarker.setIcon(destIcon);
+        } else {
+          riderDestMarker = L.marker([activeOrder.lat, activeOrder.lng], { icon: destIcon }).addTo(riderNavMap);
+        }
+
+        const coords = [[rLat, rLng], [activeOrder.lat, activeOrder.lng]];
+        if (riderRouteLine) {
+          riderRouteLine.setLatLngs(coords);
+          riderRouteLine.setStyle({ color: "#0284c7", dashArray: null });
+        } else {
+          riderRouteLine = L.polyline(coords, { color: "#0284c7", weight: 4 }).addTo(riderNavMap);
+        }
+      } else {
+        if (riderDestMarker) {
+          riderNavMap.removeLayer(riderDestMarker);
+          riderDestMarker = null;
+        }
+        const coords = [[rLat, rLng], [OBRADOR_COORDS.lat, OBRADOR_COORDS.lng]];
+        if (riderRouteLine) {
+          riderRouteLine.setLatLngs(coords);
+          riderRouteLine.setStyle({ color: "#10b981", dashArray: "6,6" });
+        } else {
+          riderRouteLine = L.polyline(coords, { color: "#10b981", weight: 4, dashArray: "6,6" }).addTo(riderNavMap);
+        }
+      }
+    }
+
+    function centerRiderNavMap() {
+      const rider = riders.find(r => r.id === selectedRiderId);
+      if (!rider || !riderNavMap) return;
+      const rLat = Number(rider.lat) || OBRADOR_COORDS.lat;
+      const rLng = Number(rider.lng) || OBRADOR_COORDS.lng;
+      riderNavMap.flyTo([rLat, rLng], 16, { duration: 0.4 });
+    }
+
+    function renderMission(forceRebuild = false) {
+      const container = document.getElementById("active-mission-container");
+      const rider = riders.find(r => r.id === selectedRiderId);
+      if (!rider || !container) return;
+
+      const rLat = Number(rider.lat) || OBRADOR_COORDS.lat;
+      const rLng = Number(rider.lng) || OBRADOR_COORDS.lng;
+      const distKm = haversineKm(OBRADOR_COORDS.lat, OBRADOR_COORDS.lng, rLat, rLng);
+      const times = calculateMadridTravelTimes(distKm);
+
+      document.getElementById("rider-coords-text").innerHTML =
+        distKm > 0.2
+          ? `📍 A <strong>${distKm} km</strong> del local &bull; 🚗 <strong>${times.carMin}m</strong> coche | 🚲 <strong>${times.bikeMin}m</strong> bici`
+          : `📍 En Obrador Malasaña 5 (${rLat.toFixed(4)}, ${rLng.toFixed(4)})`;
+
+      const myOrders = orders.filter(o => o.riderId === rider.id && o.status !== "delivered");
+      const activeOrder = myOrders.find(o => o.status === "en_route" || o.status === "returning") || myOrders[0];
+      updateRiderNavMap(rider, activeOrder);
+
+      const nowMinuteBucket = Math.floor(Date.now() / 30000);
+      const sig = activeOrder
+        ? `${rider.id}|${activeOrder.id}|${activeOrder.status}|${activeOrder.slot}|${nowMinuteBucket}`
+        : `${rider.id}|IDLE`;
+
+      if (!forceRebuild && sig === lastRenderedSignature) {
+        return;
+      }
+      lastRenderedSignature = sig;
+
+      if (!activeOrder) {
+        container.innerHTML = `
+          <div class="card" style="text-align:center; padding:30px 16px;">
+            <div style="font-size:2.5rem; margin-bottom:8px;">🟢</div>
+            <h2 style="font-size:1.15rem; font-weight:800;">Estás Disponible (${rider.name})</h2>
+            <p style="font-size:0.84rem; color:#94a3b8; margin-top:6px;">
+              Tu ubicación GPS está guardada y sincronizada con el mapa de Cocina. En cuanto Cocina te asigne una salida, aparecerá aquí con tu cronómetro y dirección.
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      const deliverySlot = addMinutesToSlot(activeOrder.slot, 30);
+      const nextRoundSlot = addMinutesToSlot(activeOrder.slot, 60);
+      const nextRoundOrder = myOrders.find(o => o.id !== activeOrder.id && o.slot === nextRoundSlot);
+
+      const outboundBudget = activeOrder.outboundMinutes || 25;
+      const returnBudget = activeOrder.returnMinutes || 15;
+      const now = Date.now();
+
+      let timerHtml = "";
+      let actionHtml = "";
+
+      if (activeOrder.status === "pending" || activeOrder.status === "cooking" || activeOrder.status === "ready") {
+        timerHtml = `
+          <div class="timer-banner">
+            <div style="font-size:0.78rem; font-weight:800; text-transform:uppercase; color:#34d399;">
+              🥘 Preparando Salida de las ${activeOrder.slot}h
+            </div>
+            <div class="timer-big">${activeOrder.slot}h</div>
+            <div style="font-size:0.8rem; color:#cbd5e1;">
+              Entrega objetivo: <strong>${deliverySlot}h</strong> (${outboundBudget} min ida + aparcar + subir)<br>
+              Regreso obligatorio al local antes de las <strong>${nextRoundSlot}h</strong>
+            </div>
+          </div>
+        `;
+
+        actionHtml = `
+          <button class="step-btn btn-depart" onclick="riderStartTrip('${activeOrder.id}')">
+            🚀 1. SALGO DEL LOCAL AHORA (INICIAR CRONÓMETRO)
+          </button>
+        `;
+      } else if (activeOrder.status === "en_route") {
+        const elapsedMin = Math.max(0, Math.floor((now - (activeOrder.departedAt || now)) / 60000));
+        const rem = outboundBudget - elapsedMin;
+        const semClass = rem >= 4 ? "" : rem >= -2 ? "yellow" : "red";
+
+        timerHtml = `
+          <div class="timer-banner ${semClass}">
+            <div style="font-size:0.76rem; font-weight:800; text-transform:uppercase;">
+              1️⃣ FASE IDA + APARCAR + SUBIR AL PISO
+            </div>
+            <div class="timer-big">${elapsedMin} min <span style="font-size:1.1rem; font-weight:600;">/ ${outboundBudget} min est.</span></div>
+            <div style="font-size:0.8rem;">
+              ${rem >= 0
+                ? `Tienes <strong>${rem} min</strong> para entregar a tiempo (${deliverySlot}h)`
+                : `🚨 Vas con <strong>+${Math.abs(rem)} min de retraso</strong> sobre la hora de entrega. ¡Marca Entregado en cuanto entregues!`}
+            </div>
+          </div>
+        `;
+
+        const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(activeOrder.address + ", Madrid")}`;
+
+        actionHtml = `
+          <a href="${mapsUrl}" target="_blank" class="btn-maps">
+            🗺️ Abrir Navegador GPS hacia ${activeOrder.address}
+          </a>
+
+          <div style="margin-top:14px; background:#0f172a; padding:12px; border-radius:12px; border:1px solid #334155;">
+            <label style="font-size:0.78rem; font-weight:800; color:#34d399; display:block;">
+              📸 OBLIGATORIO AL ENTREGAR LA PAELLA:
+            </label>
+            <input type="text" id="delivery-proof-input" class="proof-input" placeholder="¿A quién entregas? Ej: Entregado en mano a ${activeOrder.clientName.split(' ')[0]}" value="Entregado en mano a ${activeOrder.clientName.split(' ')[0]}">
+            <button class="step-btn btn-delivered" onclick="riderConfirmDelivered('${activeOrder.id}')">
+              ✅ 2. MARCAR ENTREGADO (INICIAR VUELTA AL LOCAL)
+            </button>
+          </div>
+        `;
+      } else if (activeOrder.status === "returning") {
+        const delivMs = activeOrder.deliveredToClientAt || now;
+        const returnElapsedMin = Math.max(0, Math.floor((now - delivMs) / 60000));
+        const remReturn = returnBudget - returnElapsedMin;
+        const semClass = remReturn >= 3 ? "" : remReturn >= -2 ? "yellow" : "red";
+        const etaReturnStr = formatClock(delivMs + returnBudget * 60000);
+
+        timerHtml = `
+          <div class="timer-banner ${semClass}">
+            <div style="font-size:0.76rem; font-weight:800; text-transform:uppercase;">
+              2️⃣ VOLVIENDO AL OBRADOR (MANUELA MALASAÑA 5)
+            </div>
+            <div class="timer-big">${returnElapsedMin} min <span style="font-size:1.1rem; font-weight:600;">/ ${returnBudget} min est.</span></div>
+            <div style="font-size:0.8rem;">
+              ✅ Entregaste a las <strong>${formatClock(delivMs)}h</strong><br>
+              ${remReturn >= 0
+                ? `Debes llegar al local sobre las <strong>${etaReturnStr}h</strong> para la ronda de las <strong>${nextRoundSlot}h</strong>`
+                : `🚨 ¡ALERTA EN COCINA! Llevas <strong>+${Math.abs(remReturn)} min extra</strong> en la vuelta al local.`}
+            </div>
+          </div>
+        `;
+
+        const mapsBackUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent("Calle Manuela Malasaña 5, Madrid")}`;
+
+        actionHtml = `
+          <a href="${mapsBackUrl}" target="_blank" class="btn-maps">
+            🗺️ Ruta rápida de vuelta a C/ Manuela Malasaña, 5
+          </a>
+
+          <button class="step-btn btn-returned" onclick="riderConfirmBackAtStore('${activeOrder.id}')">
+            🏁 3. YA ESTOY EN EL LOCAL (DISPONIBLE PARA ${nextRoundSlot}H)
+          </button>
+        `;
+      }
+
+      container.innerHTML = `
+        ${timerHtml}
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:0.76rem; font-weight:800; background:#334155; padding:3px 8px; border-radius:6px;">
+              Ronda ${activeOrder.slot}h ➔ Entrega ${deliverySlot}h
+            </span>
+            <strong style="color:#10b981;">${activeOrder.total ? activeOrder.total.toFixed(2) + " €" : ""}</strong>
+          </div>
+
+          <h3 style="font-size:1.1rem; font-weight:800;">👤 ${activeOrder.clientName}</h3>
+          <p style="font-size:0.88rem; color:#38bdf8; font-weight:700; margin-top:4px;">📍 ${activeOrder.address}</p>
+          <p style="font-size:0.82rem; color:#94a3b8; margin-top:2px;">📞 <a href="tel:${activeOrder.clientPhone}" style="color:#cbd5e1;">${activeOrder.clientPhone}</a></p>
+
+          <div style="background:#0f172a; border-radius:10px; padding:10px; margin-top:10px; font-size:0.84rem; border:1px dashed #334155;">
+            ${activeOrder.items.map(i => `<div>• <strong style="color:#fbbf24;">${i.highlight || i.name}</strong> (${i.name}) ${i.notes ? `<br><em style="color:#38bdf8;">Nota: ${i.notes}</em>` : ""}</div>`).join("")}
+          </div>
+
+          ${actionHtml}
+
+          ${nextRoundOrder ? `
+            <div class="next-round-alert">
+              ⚠️ <strong>¡TIENES SIGUIENTE PAELLA ASIGNADA A LAS ${nextRoundSlot}H!</strong><br>
+              Al volver a Manuela Malasaña 5 cargas el pedido de <strong>${nextRoundOrder.clientName}</strong> (${nextRoundOrder.address}). ¡No pierdas tiempo en la vuelta!
+            </div>
+          ` : `
+            <div class="next-round-alert">
+              🔄 Recuerda: Debes estar de vuelta en Manuela Malasaña 5 antes de las <strong>${nextRoundSlot}h</strong> para entrar en la siguiente ronda.
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function riderStartTrip(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      const rider = riders.find(r => r.id === selectedRiderId);
+      if (!order) return;
+
+      order.status = "en_route";
+      order.departedAt = Date.now();
+      order.deliveredToClientAt = null;
+      order.returnedToStoreAt = null;
+
+      if (rider && !rider.gpsActive && order.lat && order.lng) {
+        rider.lat = OBRADOR_COORDS.lat + (order.lat - OBRADOR_COORDS.lat) * 0.3;
+        rider.lng = OBRADOR_COORDS.lng + (order.lng - OBRADOR_COORDS.lng) * 0.3;
+        rider.lastGpsUpdate = Date.now();
+      }
+
+      sendRiderPatch(rider, order, true);
+      renderMission(true);
+    }
+
+    function riderConfirmDelivered(orderId) {
+      const proofInput = document.getElementById("delivery-proof-input");
+      const proofText = proofInput ? proofInput.value.trim() : "Entregado en mano";
+      if (!proofText) {
+        alert("Por favor, indica a quién entregaste la paella para cerrar el tiempo de ida.");
+        return;
+      }
+
+      const order = orders.find(o => o.id === orderId);
+      const rider = riders.find(r => r.id === selectedRiderId);
+      if (!order) return;
+
+      order.status = "returning";
+      order.deliveredToClientAt = Date.now();
+      order.deliveryProof = proofText;
+
+      if (rider && !rider.gpsActive && order.lat && order.lng) {
+        rider.lat = order.lat;
+        rider.lng = order.lng;
+        rider.lastGpsUpdate = Date.now();
+      }
+
+      sendRiderPatch(rider, order, true);
+      renderMission(true);
+    }
+
+    let bgAudioEl = null;
+    let bgHeartbeatTimer = null;
+
+    // Genera un archivo WAV silencioso en memoria para que iOS/Android mantenga vivo el proceso web en 2º plano
+    function createSilentWavDataUri() {
+      const sampleRate = 8000;
+      const numSamples = 8000; // 1 segundo
+      const buffer = new ArrayBuffer(44 + numSamples * 2);
+      const view = new DataView(buffer);
+      const writeStr = (offset, str) => {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+      };
+      writeStr(0, "RIFF");
+      view.setUint32(4, 36 + numSamples * 2, true);
+      writeStr(8, "WAVE");
+      writeStr(12, "fmt ");
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeStr(36, "data");
+      view.setUint32(40, numSamples * 2, true);
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      return "data:audio/wav;base64," + btoa(binary);
+    }
+
+    function startBackgroundKeepAlive() {
+      try {
+        if (!bgAudioEl) {
+          bgAudioEl = new Audio(createSilentWavDataUri());
+          bgAudioEl.loop = true;
+          bgAudioEl.volume = 0.01;
+        }
+        bgAudioEl.play().catch(() => {});
+
+        if ("mediaSession" in navigator) {
+          const me = riders.find(r => r.id === selectedRiderId);
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: "🛵 Turno Activo — GPS en Vivo",
+            artist: me ? `Repartidor: ${me.name}` : "Socarratt Valencian Food",
+            album: "Obrador C/ Manuela Malasaña, 5"
+          });
+        }
+      } catch (e) {}
+
+      if (bgHeartbeatTimer) clearInterval(bgHeartbeatTimer);
+      bgHeartbeatTimer = setInterval(() => {
+        if (localStorage.getItem("socarratt_gps_auto_enabled") !== "1") return;
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const rider = riders.find(r => r.id === selectedRiderId);
+              if (rider) {
+                rider.lat = pos.coords.latitude;
+                rider.lng = pos.coords.longitude;
+                rider.gpsActive = true;
+                rider.lastGpsUpdate = Date.now();
+                sendRiderPatch(rider, null, false);
+                renderMission(false);
+              }
+            },
+            () => {},
+            { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 }
+          );
+        }
+      }, 6000);
+    }
+
+    function stopBackgroundKeepAlive() {
+      try {
+        if (bgAudioEl) {
+          bgAudioEl.pause();
+        }
+      } catch (e) {}
+      if (bgHeartbeatTimer) {
+        clearInterval(bgHeartbeatTimer);
+        bgHeartbeatTimer = null;
+      }
+      if (gpsWatchId !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(gpsWatchId);
+        gpsWatchId = null;
+      }
+    }
+
+    function updateShiftUi(isActive) {
+      const box = document.getElementById("shift-control-box");
+      const title = document.getElementById("shift-status-title");
+      const btnStart = document.getElementById("btn-start-shift");
+      const btnStop = document.getElementById("btn-stop-shift");
+      const hint = document.getElementById("shift-bg-hint");
+      const badge = document.getElementById("gps-status-badge");
+
+      if (isActive) {
+        if (box) box.style.borderColor = "#10b981";
+        if (title) {
+          title.innerHTML = "🟢 EN TURNO ACTIVO (GPS 2º Plano)";
+          title.style.color = "#34d399";
+        }
+        if (btnStart) {
+          btnStart.innerHTML = "🛰️ Actualizar mi GPS Ahora";
+          btnStart.style.background = "#0284c7";
+          btnStart.style.color = "#ffffff";
+        }
+        if (btnStop) btnStop.style.display = "block";
+        if (hint) hint.style.display = "flex";
+        if (badge) badge.textContent = "🛰️ En Turno (2º Plano)";
+      } else {
+        if (box) box.style.borderColor = "#334155";
+        if (title) {
+          title.innerHTML = "⚪ Fuera de Turno (GPS Apagado)";
+          title.style.color = "#f8fafc";
+        }
+        if (btnStart) {
+          btnStart.innerHTML = "🟢 INICIAR TURNO (GPS 2º PLANO)";
+          btnStart.style.background = "#10b981";
+          btnStart.style.color = "#052e16";
+        }
+        if (btnStop) btnStop.style.display = "none";
+        if (hint) hint.style.display = "none";
+        if (badge) badge.textContent = "⚪ Turno Cerrado";
+      }
+    }
+
+    function startRiderShift() {
+      localStorage.setItem("socarratt_gps_auto_enabled", "1");
+      updateShiftUi(true);
+      const rider = riders.find(r => r.id === selectedRiderId);
+      if (rider) {
+        rider.onShift = true;
+        rider.gpsActive = true;
+        rider.shiftTimeStr = formatClock(Date.now());
+        // Notificar al instante a la tabla de Cocina que este repartidor ha abierto turno
+        sendRiderPatch(rider, null, true);
+      }
+      startBackgroundKeepAlive();
+      activateRealPhoneGps(false);
+      renderMission(true);
+    }
+
+    function stopRiderShift() {
+      if (!confirm("¿Seguro que quieres finalizar tu turno y apagar el envío de GPS a Cocina?")) return;
+      localStorage.removeItem("socarratt_gps_auto_enabled");
+      stopBackgroundKeepAlive();
+      updateShiftUi(false);
+
+      const rider = riders.find(r => r.id === selectedRiderId);
+      if (rider) {
+        rider.lat = OBRADOR_COORDS.lat;
+        rider.lng = OBRADOR_COORDS.lng;
+        rider.gpsActive = false;
+        rider.onShift = false;
+        rider.shiftTimeStr = formatClock(Date.now());
+        rider.lastGpsUpdate = Date.now();
+        sendRiderPatch(rider, null, true);
+      }
+      renderMission(true);
+    }
+
+    function togglePocketMode(show) {
+      const overlay = document.getElementById("pocket-mode-overlay");
+      if (!overlay) return;
+      overlay.style.display = show ? "flex" : "none";
+      if (show) requestWakeLock();
+    }
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+
+    function riderConfirmBackAtStore(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      const rider = riders.find(r => r.id === selectedRiderId);
+      if (!order) return;
+
+      order.status = "delivered";
+      order.returnedToStoreAt = Date.now();
+
+      // El repartidor ha vuelto al local con este pedido, pero sigue en turno para la siguiente ronda
+      if (rider && localStorage.getItem("socarratt_gps_auto_enabled") !== "1") {
+        rider.lat = OBRADOR_COORDS.lat;
+        rider.lng = OBRADOR_COORDS.lng;
+      }
+
+      sendRiderPatch(rider, order, true);
+      renderMission(true);
+    }
+
+    function simulatePosition(posType) {
+      const rider = riders.find(r => r.id === selectedRiderId);
+      if (!rider) return;
+
+      const activeOrder = orders.find(o => o.riderId === rider.id && o.status !== "delivered");
+      const targetLat = activeOrder && activeOrder.lat ? activeOrder.lat : 40.4450;
+      const targetLng = activeOrder && activeOrder.lng ? activeOrder.lng : -3.6900;
+
+      if (posType === "base") {
+        rider.lat = OBRADOR_COORDS.lat;
+        rider.lng = OBRADOR_COORDS.lng;
+        rider.gpsActive = false;
+      } else if (posType === "mid_out") {
+        rider.lat = OBRADOR_COORDS.lat + (targetLat - OBRADOR_COORDS.lat) * 0.5;
+        rider.lng = OBRADOR_COORDS.lng + (targetLng - OBRADOR_COORDS.lng) * 0.5;
+        rider.gpsActive = true;
+      } else if (posType === "client") {
+        rider.lat = targetLat;
+        rider.lng = targetLng;
+        rider.gpsActive = true;
+      } else if (posType === "mid_return") {
+        rider.lat = OBRADOR_COORDS.lat + (targetLat - OBRADOR_COORDS.lat) * 0.35;
+        rider.lng = OBRADOR_COORDS.lng + (targetLng - OBRADOR_COORDS.lng) * 0.35;
+        rider.gpsActive = true;
+      }
+
+      rider.lastGpsUpdate = Date.now();
+      sendRiderPatch(rider, null, true);
+      renderMission(true);
+    }
+
+    function activateRealPhoneGps(silent = false) {
+      if (!navigator.geolocation) {
+        if (!silent) alert("Tu navegador no soporta geolocalización GPS.");
+        return;
+      }
+      localStorage.setItem("socarratt_gps_auto_enabled", "1");
+      updateShiftUi(true);
+      requestWakeLock();
+      startBackgroundKeepAlive();
+
+      const badge = document.getElementById("gps-status-badge");
+      if (badge && !silent) badge.textContent = "🛰️ Conectando GPS...";
+
+      const onGpsSuccess = (pos) => {
+        const rider = riders.find(r => r.id === selectedRiderId);
+        if (rider) {
+          rider.lat = pos.coords.latitude;
+          rider.lng = pos.coords.longitude;
+          rider.gpsActive = true;
+          rider.lastGpsUpdate = Date.now();
+          sendRiderPatch(rider, null, !silent);
+          renderMission(false);
+        }
+        if (badge) badge.textContent = "🛰️ En Turno (2º Plano)";
+      };
+
+      const onGpsError = () => {
+        if (!silent) {
+          if (badge) badge.textContent = "📡 Permiso GPS pendiente";
+          alert("Para enviar tu ubicación real en vivo al mapa del PC, acepta el permiso de Ubicación en el navegador del móvil.");
+        }
+      };
+
+      navigator.geolocation.getCurrentPosition(onGpsSuccess, onGpsError, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 5000
+      });
+
+      if (gpsWatchId !== null) {
+        navigator.geolocation.clearWatch(gpsWatchId);
+      }
+      gpsWatchId = navigator.geolocation.watchPosition(onGpsSuccess, () => {}, {
+        enableHighAccuracy: true,
+        maximumAge: 4000,
+        timeout: 12000
+      });
+    }
+  </script>
+</body>
+</html>

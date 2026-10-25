@@ -1,0 +1,5 @@
+﻿cloudflared.exe
+*.tmp
+tunnel_log.txt
+sync_db.json
+live_state.json

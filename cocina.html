@@ -3,12 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel de Cocina y Comandas | Socarratt Madrid (Manuela Malasaña 5)</title>
+  <title>Panel de Cocina, Expedición y Radar GPS | Socarratt Madrid (Manuela Malasaña 5)</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
+  <!-- Leaflet CSS local para garantizar que el mapa cargue siempre al 100% -->
+  <link rel="stylesheet" href="leaflet.css" />
   <link rel="stylesheet" href="cocina.css">
 </head>
 <body>
@@ -18,71 +20,236 @@
     <div class="kds-brand">
       <div style="font-size: 2rem;">🥘</div>
       <div>
-        <h1>Socarratt &bull; Control de Cocina y Expedición</h1>
-        <span>Obrador Central: Calle Manuela Malasaña, 5 (Metro Bilbao, Madrid)</span>
+        <h1>Socarratt &bull; Cocina, Expedición y Control de Repartidores</h1>
+        <span>Obrador Central: Calle Manuela Malasaña, 5 (Madrid) &bull; Ciclo de Rondas: Sale +00m ➔ Entrega +30m ➔ Vuelve +60m</span>
       </div>
     </div>
 
     <div class="kds-actions">
-      <!-- Selector de fecha -->
-      <select id="kds-date-filter" class="btn-kds" style="background:#111827; border-color:#4b5563;">
-        <option value="today">📅 Comandas de Hoy</option>
-        <option value="tomorrow">📅 Comandas de Mañana</option>
-        <option value="all">📅 Ver todas las fechas</option>
-      </select>
+      <button class="btn-kds" onclick="openMobileConnectModal()" style="background:#0284c7; border-color:#38bdf8; color:#fff; box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);">
+        <span>📲</span> <span>Probar en mi Móvil (QR / WhatsApp)</span>
+      </button>
 
-      <button id="btn-new-phone-order" class="btn-kds btn-kds-primary" title="Apuntar un pedido de cliente que llama por teléfono">
-        <span>➕</span> <span>Añadir pedido por teléfono</span>
+      <button id="btn-toggle-gps-panel" class="btn-kds btn-kds-gps active" onclick="toggleFleetPanel()" title="Mostrar/Ocultar Mapa GPS y Control de Tiempos de Repartidores">
+        <span>🛰️</span> <span>Radar GPS y Flota</span>
+      </button>
+
+      <a href="repartidor.html" target="_blank" class="btn-kds" style="border-color:#38bdf8; color:#38bdf8;" title="Abrir la app móvil en otra pestaña del ordenador">
+        <span>📱</span> <span>App Repartidor (PC)</span>
+      </a>
+
+      <button class="btn-kds" onclick="openRidersModal()" title="Configurar nombres, teléfonos y vehículos de tus repartidores">
+        <span>👥</span> <span>Repartidores</span>
+      </button>
+
+      <button id="btn-new-phone-order" class="btn-kds btn-kds-primary" title="Apuntar un pedido de cliente que llama por teléfono para cualquier fecha">
+        <span>➕</span> <span>Nuevo Pedido / Reserva</span>
+      </button>
+
+      <button class="btn-kds" onclick="clearDeliveredOrders()" title="Borrar del tablón los pedidos que ya están marcados como completados/entregados">
+        <span>🧹</span> <span>Limpiar Entregados</span>
       </button>
 
       <button id="btn-print-kds" class="btn-kds" title="Imprimir hoja de producción para el paellero">
-        <span>🖨️</span> <span>Imprimir</span>
+        <span>🖨️</span>
       </button>
 
-      <a href="index.html" class="btn-kds" style="text-decoration: none;">
-        <span>➔</span> <span>Carta Clientes</span>
+      <a href="index.html" class="btn-kds" title="Ir a la web de pedidos de clientes">
+        <span>➔</span> <span>Web Clientes</span>
       </a>
     </div>
   </header>
 
-  <!-- 2. KPIs de Producción del Día -->
+  <!-- 1B. Barra de Calendario y Selector de Cualquier Fecha -->
+  <section class="date-nav-bar">
+    <div class="date-nav-left">
+      <span style="font-size:0.78rem; font-weight:800; color:#94a3b8; text-transform:uppercase;">📅 Fecha del Tablón:</span>
+      
+      <button type="button" class="date-quick-btn active" id="qdate-today" onclick="selectQuickDate('today')">Hoy</button>
+      <button type="button" class="date-quick-btn" id="qdate-tomorrow" onclick="selectQuickDate('tomorrow')">Mañana</button>
+      <button type="button" class="date-quick-btn" id="qdate-saturday" onclick="selectQuickDate('saturday')">Este Sábado</button>
+      <button type="button" class="date-quick-btn" id="qdate-sunday" onclick="selectQuickDate('sunday')">Este Domingo</button>
+
+      <!-- Calendario completo para elegir cualquier día del año + botones Día Anterior / Día Siguiente -->
+      <div class="calendar-input-group">
+        <button type="button" class="calendar-step-btn" onclick="stepSelectedDate(-1)" title="Día anterior">◀</button>
+        <input type="date" id="kds-calendar-input" class="kds-date-input" onchange="onCalendarDateChange(this.value)" title="Elige cualquier fecha del calendario">
+        <button type="button" class="calendar-step-btn" onclick="stepSelectedDate(1)" title="Día siguiente">▶</button>
+      </div>
+
+      <button type="button" class="date-quick-btn" id="qdate-all" onclick="selectQuickDate('all')">📋 Ver Todas las Fechas</button>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <button type="button" class="date-quick-btn" id="btn-toggle-all-collapse" onclick="toggleAllTicketsCollapse()" style="border-color:#38bdf8; color:#38bdf8;">
+        ↕️ Plegar Todos (Vista Compacta)
+      </button>
+      <div class="active-date-banner" id="active-date-label">
+        📅 Viendo comandas de Hoy
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. KPIs de Producción y Estado de Repartidores -->
   <section class="kpi-row">
     <div class="kpi-card" style="border-left: 4px solid var(--primary);">
-      <span class="kpi-label">Paellas Grandes al Fuego</span>
+      <span class="kpi-label">Paellas Grandes (Fecha Elegida)</span>
       <span class="kpi-value" id="kpi-paellas-count">0</span>
+      <span class="kpi-sub">Salidas cada 30 min (13:00 a 16:00)</span>
     </div>
 
     <div class="kpi-card" style="border-left: 4px solid #38bdf8;">
       <span class="kpi-label">Total Raciones Sueltas</span>
       <span class="kpi-value" id="kpi-raciones-count">0</span>
+      <span class="kpi-sub">Envases individuales</span>
     </div>
 
-    <div class="kpi-card" style="border-left: 4px solid var(--bike-color);">
-      <span class="kpi-label">Bicis de Carga (Radio 15 min)</span>
-      <span class="kpi-value" id="kpi-bicis-count">0 / 3</span>
+    <div class="kpi-card" style="border-left: 4px solid var(--sem-green);">
+      <span class="kpi-label">Repartidores en Local / Ruta</span>
+      <span class="kpi-value" id="kpi-fleet-status">0 Libres / 0 Ruta</span>
+      <span class="kpi-sub" id="kpi-fleet-sub">Bicis de carga y coches</span>
     </div>
 
-    <div class="kpi-card" style="border-left: 4px solid var(--car-color);">
-      <span class="kpi-label">Coches en Ruta (Salir 30 min antes)</span>
-      <span class="kpi-value" id="kpi-coches-count">0</span>
+    <div class="kpi-card" id="kpi-delay-card" style="border-left: 4px solid var(--sem-red);">
+      <span class="kpi-label">Control Anti-Retrasos (Vuelta)</span>
+      <span class="kpi-value" id="kpi-delays-count">0 alertas</span>
+      <span class="kpi-sub" id="kpi-delays-sub">Separación Ida vs Vuelta al local</span>
     </div>
   </section>
 
-  <!-- 3. Tablón Horizontal de Tramas Horarias (cada media hora) -->
+  <!-- 3. PANEL DE CONTROL DE REPARTIDORES Y MAPA GPS EN VIVO -->
+  <section class="fleet-control-section" id="fleet-control-panel">
+    <div class="fleet-header">
+      <div class="fleet-title-box">
+        <h2>
+          <span>🗺️ Google Maps Callejero en Vivo de Madrid y Control de Retorno (+1h)</span>
+        </h2>
+        <p>
+          Arrastra con el ratón para moverte por Madrid o usa la rueda para hacer zoom. Las calles, sentidos y paradas de Metro se ven a todo color.
+        </p>
+      </div>
+
+      <div class="fleet-toolbar">
+        <select id="map-style-select" class="btn-mini" onchange="changeMapTileStyle(this.value)" style="background:#0f172a; color:#38bdf8; border-color:#38bdf8;">
+          <option value="google_streets" selected>🗺️ Google Maps Callejero (Madrid)</option>
+          <option value="google_hybrid">🛰️ Google Satélite + Calles</option>
+          <option value="esri_streets">🏙️ Callejero Esri Detallado</option>
+          <option value="osm">🌍 OpenStreetMap Clásico</option>
+        </select>
+
+        <button class="btn-mini btn-mini-cyan" onclick="centerMapOnBase()">
+          📍 Centrar Malasaña 5
+        </button>
+
+        <button class="btn-mini" onclick="fitAllMapMarkers()">
+          🎯 Encuadrar Todos
+        </button>
+
+        <button class="btn-mini" id="btn-expand-map" onclick="toggleExpandMap()">
+          🔍 Ampliar Mapa
+        </button>
+
+        <button class="btn-mini btn-mini-orange" id="btn-sim-gps" onclick="toggleGpsSimulation()">
+          ▶️ Simular GPS en Vivo
+        </button>
+      </div>
+    </div>
+
+    <div class="fleet-grid" id="fleet-grid-container">
+      <!-- Mapa GPS interactivo de Madrid -->
+      <div class="gps-map-wrapper">
+        <div id="kds-live-map"></div>
+        <div class="map-footer-legend">
+          <div class="legend-items">
+            <span class="legend-dot"><span class="dot-circle" style="background:#d9531e;"></span> Obrador (Malasaña 5)</span>
+            <span class="legend-dot"><span class="dot-circle" style="background:#10b981;"></span> 🟢 En tiempo / En Base</span>
+            <span class="legend-dot"><span class="dot-circle" style="background:#f59e0b;"></span> 🟡 Justo (&lt;5m margen)</span>
+            <span class="legend-dot"><span class="dot-circle" style="background:#ef4444;"></span> 🔴 Retraso / Parado en vuelta</span>
+          </div>
+          <span id="gps-last-sync" style="color:#34d399; font-weight:700;">📡 Conectado en tiempo real con Móviles</span>
+        </div>
+      </div>
+
+      <!-- Tarjetas de Repartidores con Cronómetro de Ida, Check de Entrega y Cronómetro de Vuelta -->
+      <div class="riders-cards-list" id="kds-riders-list">
+        <!-- Renderizado dinámico desde cocina.js -->
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Tablón Horizontal de Tramas Horarias (13:00 a 16:00 cada 30 min) -->
   <main class="slots-container" id="kds-slots-grid">
-    <!-- Renderizado dinámico desde cocina.js (13:00, 13:30, 14:00, 14:30...) -->
+    <!-- Renderizado dinámico desde cocina.js -->
   </main>
 
-  <!-- 4. Modal para apuntar una llamada telefónica en 10 segundos -->
+  <!-- 5. Modal para Conectar y Probar en el Móvil (QR + Enviar por WhatsApp) -->
+  <div class="modal-overlay" id="mobile-connect-modal">
+    <div class="modal-content" style="max-width: 500px; text-align: center;">
+      <button class="modal-close-btn" onclick="closeMobileConnectModal()">&times;</button>
+      <div style="font-size: 2.2rem; margin-bottom: 4px;">📲</div>
+      <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 6px;">Probar App de Repartidor en tu Móvil</h2>
+      <p style="font-size: 0.82rem; color: #cbd5e1; margin-bottom: 14px;">
+        Escanea este código QR con la cámara de tu móvil o envíate el enlace por WhatsApp. <strong>Lo que toques en el móvil actualizará este tablón de cocina en tiempo real</strong> (funciona con Wi-Fi y con 4G/5G).
+      </p>
+
+      <!-- Selector de qué pantalla abrir en el móvil -->
+      <div style="text-align:left; margin-bottom:12px;">
+        <label class="form-label">¿Qué pantalla quieres abrir en el móvil?</label>
+        <select id="mobile-link-target" class="form-select" onchange="updateMobileQrAndLinks()">
+          <option value="/repartidor.html" selected>🛵 App Móvil del Repartidor (GPS + Marcar Entregado)</option>
+          <option value="/cocina.html">🥘 Tablón de Cocina y Radar GPS completo</option>
+          <option value="/index.html">🛒 Carta Web de Clientes (Pedidos Online)</option>
+        </select>
+      </div>
+
+      <!-- Selector de Modo de Conexión (Túnel 4G/5G vs Wi-Fi Directo) -->
+      <div style="display:flex; gap:6px; justify-content:center; margin-bottom:10px;">
+        <button type="button" id="qr-mode-tunnel" class="date-quick-btn active" onclick="setMobileQrMode('tunnel')" style="font-size:0.75rem;">
+          🌐 Túnel 4G/5G + GPS (Auto-actualizable)
+        </button>
+        <button type="button" id="qr-mode-wifi" class="date-quick-btn" onclick="setMobileQrMode('wifi')" style="font-size:0.75rem;">
+          📶 Wi-Fi Directo (192.168.1.41 - Nunca caduca)
+        </button>
+      </div>
+
+      <!-- Caja del Código QR -->
+      <div style="background: white; padding: 16px; border-radius: 16px; display: inline-block; margin-bottom: 14px; box-shadow: 0 8px 25px rgba(0,0,0,0.4);">
+        <img id="mobile-qr-img" src="" alt="Código QR Móvil" style="width: 210px; height: 210px; display: block;">
+      </div>
+
+      <!-- Enlace copiable -->
+      <div style="background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 10px; margin-bottom: 14px; text-align: left;">
+        <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">Enlace directo para móvil:</div>
+        <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+          <input type="text" id="mobile-public-url-input" class="form-input" readonly style="font-size:0.8rem; padding:7px 10px; color:#38bdf8; font-weight:700;" value="https://xiomar0311-svg.github.io/pedidos/repartidor.html">
+          <button type="button" class="btn-kds" onclick="copyMobileUrl()" style="padding:7px 12px; white-space:nowrap;">📋 Copiar</button>
+        </div>
+        <div style="font-size: 0.72rem; color: #64748b; margin-top: 6px;">
+          💡 Si estás en el mismo Wi-Fi de casa/local también puedes usar: <code style="color:#cbd5e1;">http://192.168.1.41:8080/repartidor.html</code>
+        </div>
+      </div>
+
+      <!-- Botón directo para mandárselo por WhatsApp -->
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <a id="btn-send-wa-mobile" href="#" target="_blank" class="btn-kds btn-kds-primary" style="justify-content:center; padding:12px; font-size:0.92rem; background:#10b981; border-color:#10b981; color:#052e16;">
+          <span>💬</span> <span>Enviarme el enlace por WhatsApp para abrirlo en el móvil</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Modal para Añadir o Editar Comanda / Reserva para Cualquier Fecha -->
   <div class="modal-overlay" id="manual-order-modal">
     <div class="modal-content">
       <button class="modal-close-btn" onclick="closeManualModal()">&times;</button>
-      <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 4px;">➕ Nueva Comanda por Teléfono</h2>
+      <h2 id="manual-modal-title" style="font-size: 1.25rem; font-weight: 800; margin-bottom: 4px;">➕ Nueva Comanda / Reserva por Teléfono</h2>
       <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 16px;">
-        Apúntalo aquí para meterlo directamente en la franja horaria de cocina sin usar papel.
+        Elige cualquier fecha del calendario. El sistema calcula distancia desde C/ Manuela Malasaña 5, tiempo de ida+subir y vuelta.
       </p>
 
       <form onsubmit="event.preventDefault(); saveManualPhoneOrder();">
+        <input type="hidden" id="m-edit-order-id" value="">
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div class="form-group">
             <label class="form-label">Nombre del cliente *</label>
@@ -94,32 +261,37 @@
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 10px;">
           <div class="form-group">
-            <label class="form-label">Tramo horario de entrega / salida *</label>
-            <select id="m-slot" class="form-select">
-              <option value="13:00">⏰ 13:00h</option>
-              <option value="13:30">⏰ 13:30h</option>
-              <option value="14:00" selected>⏰ 14:00h</option>
-              <option value="14:30">⏰ 14:30h</option>
-              <option value="15:00">⏰ 15:00h</option>
-              <option value="15:30">⏰ 15:30h</option>
-              <option value="16:00">⏰ 16:00h</option>
-            </select>
+            <label class="form-label">📅 Fecha de la Reserva / Pedido *</label>
+            <input type="date" id="m-order-date" class="form-input" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Tipo de entrega *</label>
-            <select id="m-type" class="form-select" onchange="document.getElementById('m-address-group').style.display = this.value === 'pickup' ? 'none' : 'block'">
-              <option value="pickup">🏢 Recoger en Obrador (Malasaña 5)</option>
-              <option value="delivery_whole">🥘 Paella grande a domicilio</option>
-              <option value="delivery_portions">🛵 Raciones a domicilio</option>
+            <label class="form-label">⏰ Hora Salida de Cocina (Entrega +30m) *</label>
+            <select id="m-slot" class="form-select">
+              <option value="13:00">🔥 Sale 13:00h (Entrega ~13:30h ➔ Vuelve 14:00h)</option>
+              <option value="13:30">🔥 Sale 13:30h (Entrega ~14:00h ➔ Vuelve 14:30h)</option>
+              <option value="14:00" selected>🔥 Sale 14:00h (Entrega ~14:30h ➔ Vuelve 15:00h)</option>
+              <option value="14:30">🔥 Sale 14:30h (Entrega ~15:00h ➔ Vuelve 15:30h)</option>
+              <option value="15:00">🔥 Sale 15:00h (Entrega ~15:30h ➔ Vuelve 16:00h)</option>
+              <option value="15:30">🔥 Sale 15:30h (Entrega ~16:00h ➔ Vuelve 16:30h)</option>
+              <option value="16:00">🔥 Sale 16:00h (Última ronda)</option>
             </select>
           </div>
         </div>
 
-        <div class="form-group" id="m-address-group" style="display: none;">
-          <label class="form-label">Dirección en Madrid (detecta si va en Bici o Coche):</label>
-          <input type="text" id="m-address" class="form-input" placeholder="Ej: C/ Fuencarral 40 (o CP 28004)">
+        <div class="form-group">
+          <label class="form-label">Tipo de entrega *</label>
+          <select id="m-type" class="form-select" onchange="document.getElementById('m-address-group').style.display = this.value === 'pickup' ? 'none' : 'block'">
+            <option value="delivery_whole" selected>🥘 Paella grande a domicilio</option>
+            <option value="delivery_portions">🛵 Raciones a domicilio</option>
+            <option value="pickup">🏢 Recoger en Obrador (Malasaña 5)</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="m-address-group" style="display: block;">
+          <label class="form-label">Dirección en Madrid (calcula km, tiempo de ida+subir y vuelta):</label>
+          <input type="text" id="m-address" class="form-input" placeholder="Ej: Paseo de la Castellana 120, Chamartín (o C/ Fuencarral 40)">
         </div>
 
         <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px;">
@@ -145,7 +317,6 @@
               <option value="Paella grande para 8 personas">🥘 Paella grande (8p) - 145€</option>
               <option value="Paella grande para 9 personas">🥘 Paella grande (9p) - 160€</option>
               <option value="Paella grande para 10 personas">🥘 Paella grande (10p) - 175€</option>
-              <option value="1 ración individual">🍽️ 1 ración (10€)</option>
               <option value="2 raciones individuales">🍽️ 2 raciones</option>
               <option value="3 raciones individuales">🍽️ 3 raciones</option>
               <option value="4 raciones individuales">🍽️ 4 raciones</option>
@@ -164,22 +335,62 @@
           </div>
           <div class="form-group">
             <label class="form-label">Total (€)</label>
-            <input type="number" id="m-total" class="form-input" placeholder="Ej: 115.00">
+            <input type="number" step="0.01" id="m-total" class="form-input" placeholder="Ej: 115.00" value="115">
           </div>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Notas de cocina o repartidor (opcional):</label>
-          <input type="text" id="m-notes" class="form-input" placeholder="Ej: Sin pimiento, cambio de 50€...">
+          <label class="form-label">Notas de cocina o timbre/piso para el repartidor:</label>
+          <input type="text" id="m-notes" class="form-input" placeholder="Ej: 4º B, portero automático, llevar cambio de 50€...">
         </div>
 
         <button type="submit" class="btn-kds btn-kds-primary" style="width: 100%; justify-content: center; padding: 12px; margin-top: 10px;">
-          Guardar Comanda en Cocina
+          💾 Guardar Comanda en el Tablón
         </button>
       </form>
     </div>
   </div>
 
+  <!-- 7. Modal para Gestionar la Plantilla de Repartidores -->
+  <div class="modal-overlay" id="riders-manage-modal">
+    <div class="modal-content">
+      <button class="modal-close-btn" onclick="closeRidersModal()">&times;</button>
+      <h2 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 4px;">👥 Equipo de Repartidores (Bicis y Coches)</h2>
+      <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 14px;">
+        Añade o edita tus repartidores del turno. Pulsa en "📲 Enviar a su Móvil" para mandarle su enlace directo por WhatsApp.
+      </p>
+
+      <div id="riders-modal-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;"></div>
+
+      <form onsubmit="event.preventDefault(); addNewRider();" style="background:#0f172a; padding:12px; border-radius:10px; border:1px solid #334155;">
+        <div style="font-size:0.82rem; font-weight:800; margin-bottom:8px; color:#38bdf8;">➕ Añadir Nuevo Repartidor</div>
+        <div style="display:grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap:8px; align-items:end;">
+          <div>
+            <label class="form-label" style="font-size:0.72rem;">Nombre *</label>
+            <input type="text" id="new-rider-name" class="form-input" placeholder="Ej: Dani (Bici 1)" required style="padding:7px 10px; font-size:0.82rem;">
+          </div>
+          <div>
+            <label class="form-label" style="font-size:0.72rem;">Vehículo *</label>
+            <select id="new-rider-vehicle" class="form-select" style="padding:7px 10px; font-size:0.82rem;">
+              <option value="bike">🚲 Bici de Carga</option>
+              <option value="car">🚗 Coche</option>
+              <option value="moto">🛵 Moto</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label" style="font-size:0.72rem;">Teléfono WhatsApp *</label>
+            <input type="tel" id="new-rider-phone" class="form-input" placeholder="600 000 000" required style="padding:7px 10px; font-size:0.82rem;">
+          </div>
+          <button type="submit" class="btn-kds btn-kds-primary" style="padding:8px 12px;">Añadir</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Librerías Locales (Leaflet + MQTT en tiempo real para sincronizar con el móvil) -->
+  <script src="leaflet.js"></script>
+  <script src="mqtt.min.js"></script>
+  <script src="tunnel.js"></script>
   <script src="cocina.js"></script>
 </body>
 </html>
