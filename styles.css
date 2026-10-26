@@ -934,3 +934,147 @@ body {
     font-size: 1rem;
   }
 }
+
+/* ========================================================
+   DISEÑO OFICIAL DE CARTA SOCARRATT (PERSONAJE + PAELLA)
+   ======================================================== */
+.official-carta-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.official-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 16px 14px 8px;
+  background: linear-gradient(180deg, #fffdf9 0%, #ffffff 100%);
+  border-bottom: 1px solid #f3f4f6;
+  position: relative;
+}
+
+.official-character-col {
+  width: 72px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.official-character-img {
+  max-width: 100%;
+  max-height: 145px;
+  object-fit: contain;
+}
+
+.official-paella-col {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.official-paella-img {
+  width: 155px;
+  height: 155px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,0.12));
+  transition: transform 0.25s ease;
+}
+
+.official-carta-card:hover .official-paella-img {
+  transform: scale(1.04);
+}
+
+.official-meta-box {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  color: #374151;
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+
+.official-prices-strip {
+  background: #fff8f5;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.prices-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: #111827;
+}
+
+.prices-pills-row span {
+  background: #ffffff;
+  border: 1px solid #fdba74;
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+
+.official-info-banners {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.official-banner-card {
+  background: #ffffff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.official-banner-card h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.official-banner-card p {
+  font-size: 0.84rem;
+  color: #4b5563;
+  line-height: 1.45;
+}
+
+.night-service-card {
+  background: linear-gradient(90deg, #fffbeb 0%, #fff7ed 100%);
+  border-color: #fde68a;
+}
+
+.tupper-banner-img {
+  width: 115px;
+  height: 115px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .official-banner-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .official-banner-card .btn-add-item {
+    width: 100%;
+    justify-content: center;
+  }
+}

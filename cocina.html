@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel de Cocina, Expedición y Radar GPS | Socarratt Madrid (Manuela Malasaña 5)</title>
+  <title>Panel de Cocina, Repartidores y Cierre de Caja | Socarratt Madrid</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Leaflet CSS local para garantizar que el mapa cargue siempre al 100% -->
   <link rel="stylesheet" href="leaflet.css" />
   <link rel="stylesheet" href="cocina.css">
 </head>
@@ -18,69 +17,68 @@
   <!-- 1. Barra de control superior del KDS -->
   <header class="kds-header">
     <div class="kds-brand">
-      <div style="font-size: 2rem;">🥘</div>
+      <div style="font-size: 1.8rem;">🥘</div>
       <div>
-        <h1>Socarratt &bull; Cocina, Expedición y Control de Repartidores</h1>
-        <span>Obrador Central: Calle Manuela Malasaña, 5 (Madrid) &bull; Ciclo de Rondas: Sale +00m ➔ Entrega +30m ➔ Vuelve +60m</span>
+        <h1>Socarratt &bull; Panel de Comandas, Repartidores y Caja</h1>
+        <span>Obrador Central: Calle Manuela Malasaña, 5 (Madrid)</span>
       </div>
     </div>
 
     <div class="kds-actions">
-      <button class="btn-kds" onclick="openMobileConnectModal()" style="background:#0284c7; border-color:#38bdf8; color:#fff; box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);">
-        <span>📲</span> <span>Probar en mi Móvil (QR / WhatsApp)</span>
+      <button id="btn-new-phone-order" class="btn-kds btn-kds-primary" title="Registrar un nuevo pedido con la carta oficial y apartado varios">
+        <span>➕</span> <span>Nuevo Pedido</span>
       </button>
 
-      <button id="btn-toggle-gps-panel" class="btn-kds btn-kds-gps active" onclick="toggleFleetPanel()" title="Mostrar/Ocultar Mapa GPS y Control de Tiempos de Repartidores">
+      <button class="btn-kds" onclick="scrollToCashSection()" style="background:#10b981; border-color:#059669; color:#052e16; font-weight:900;">
+        <span>💰</span> <span>Cierre de Caja y Repartidores</span>
+      </button>
+
+      <button id="btn-toggle-gps-panel" class="btn-kds btn-kds-gps active" onclick="toggleFleetPanel()">
         <span>🛰️</span> <span>Radar GPS y Flota</span>
       </button>
 
-      <a href="repartidor.html" target="_blank" class="btn-kds" style="border-color:#38bdf8; color:#38bdf8;" title="Abrir la app móvil en otra pestaña del ordenador">
-        <span>📱</span> <span>App Repartidor (PC)</span>
-      </a>
-
-      <button class="btn-kds" onclick="openRidersModal()" title="Configurar nombres, teléfonos y vehículos de tus repartidores">
-        <span>👥</span> <span>Repartidores</span>
+      <button class="btn-kds" onclick="openMobileConnectModal()" style="background:#0284c7; border-color:#38bdf8; color:#fff;">
+        <span>📲</span> <span>QR Móviles</span>
       </button>
 
-      <button id="btn-new-phone-order" class="btn-kds btn-kds-primary" title="Apuntar un pedido de cliente que llama por teléfono para cualquier fecha">
-        <span>➕</span> <span>Nuevo Pedido / Reserva</span>
+      <button class="btn-kds" onclick="openRidersModal()">
+        <span>👥</span> <span>Equipo</span>
       </button>
 
-      <button class="btn-kds" onclick="clearDeliveredOrders()" title="Borrar del tablón los pedidos que ya están marcados como completados/entregados">
-        <span>🧹</span> <span>Limpiar Entregados</span>
+      <button class="btn-kds" onclick="clearDeliveredOrders()">
+        <span>🧹</span> <span>Limpiar</span>
       </button>
 
-      <button id="btn-print-kds" class="btn-kds" title="Imprimir hoja de producción para el paellero">
+      <button id="btn-print-kds" class="btn-kds" title="Imprimir">
         <span>🖨️</span>
       </button>
 
-      <a href="index.html" class="btn-kds" title="Ir a la web de pedidos de clientes">
-        <span>➔</span> <span>Web Clientes</span>
+      <a href="index.html" class="btn-kds" title="Ir a la Carta Web de Clientes">
+        <span>🛒</span> <span>Carta Web</span>
       </a>
     </div>
   </header>
 
-  <!-- 1B. Barra de Calendario y Selector de Cualquier Fecha -->
+  <!-- 1B. Barra de Calendario y Navegación Rápida Responsive (Móvil / Portátil / PC) -->
   <section class="date-nav-bar">
     <div class="date-nav-left">
-      <span style="font-size:0.78rem; font-weight:800; color:#94a3b8; text-transform:uppercase;">📅 Fecha del Tablón:</span>
+      <span style="font-size:0.76rem; font-weight:800; color:#94a3b8; text-transform:uppercase;">📅 Fecha:</span>
       
       <button type="button" class="date-quick-btn active" id="qdate-today" onclick="selectQuickDate('today')">Hoy</button>
       <button type="button" class="date-quick-btn" id="qdate-tomorrow" onclick="selectQuickDate('tomorrow')">Mañana</button>
-      <button type="button" class="date-quick-btn" id="qdate-saturday" onclick="selectQuickDate('saturday')">Este Sábado</button>
-      <button type="button" class="date-quick-btn" id="qdate-sunday" onclick="selectQuickDate('sunday')">Este Domingo</button>
+      <button type="button" class="date-quick-btn" id="qdate-saturday" onclick="selectQuickDate('saturday')">Sábado</button>
+      <button type="button" class="date-quick-btn" id="qdate-sunday" onclick="selectQuickDate('sunday')">Domingo</button>
 
-      <!-- Calendario completo para elegir cualquier día del año + botones Día Anterior / Día Siguiente -->
       <div class="calendar-input-group">
         <button type="button" class="calendar-step-btn" onclick="stepSelectedDate(-1)" title="Día anterior">◀</button>
-        <input type="date" id="kds-calendar-input" class="kds-date-input" onchange="onCalendarDateChange(this.value)" title="Elige cualquier fecha del calendario">
+        <input type="date" id="kds-calendar-input" class="kds-date-input" onchange="onCalendarDateChange(this.value)">
         <button type="button" class="calendar-step-btn" onclick="stepSelectedDate(1)" title="Día siguiente">▶</button>
       </div>
 
-      <button type="button" class="date-quick-btn" id="qdate-all" onclick="selectQuickDate('all')">📋 Ver Todas las Fechas</button>
+      <button type="button" class="date-quick-btn" id="qdate-all" onclick="selectQuickDate('all')">📋 Todas</button>
     </div>
 
-    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
       <button type="button" class="date-quick-btn" id="btn-toggle-all-collapse" onclick="toggleAllTicketsCollapse()" style="border-color:#38bdf8; color:#38bdf8;">
         ↕️ Plegar Todos (Vista Compacta)
       </button>
@@ -90,30 +88,30 @@
     </div>
   </section>
 
-  <!-- 2. KPIs de Producción y Estado de Repartidores -->
+  <!-- 2. KPIs de Producción, Flota y Caja del Día -->
   <section class="kpi-row">
     <div class="kpi-card" style="border-left: 4px solid var(--primary);">
-      <span class="kpi-label">Paellas Grandes (Fecha Elegida)</span>
+      <span class="kpi-label">Paellas Completas</span>
       <span class="kpi-value" id="kpi-paellas-count">0</span>
-      <span class="kpi-sub">Salidas cada 30 min (13:00 a 16:00)</span>
+      <span class="kpi-sub">6px a 10px programadas</span>
     </div>
 
     <div class="kpi-card" style="border-left: 4px solid #38bdf8;">
-      <span class="kpi-label">Total Raciones Sueltas</span>
+      <span class="kpi-label">Raciones en Tupper</span>
       <span class="kpi-value" id="kpi-raciones-count">0</span>
       <span class="kpi-sub">Envases individuales</span>
     </div>
 
     <div class="kpi-card" style="border-left: 4px solid var(--sem-green);">
-      <span class="kpi-label">Repartidores en Local / Ruta</span>
-      <span class="kpi-value" id="kpi-fleet-status">0 Libres / 0 Ruta</span>
-      <span class="kpi-sub" id="kpi-fleet-sub">Bicis de carga y coches</span>
+      <span class="kpi-label">Repartidores en Turno</span>
+      <span class="kpi-value" id="kpi-fleet-status">0 / 0</span>
+      <span class="kpi-sub" id="kpi-fleet-sub">Estado de flota en directo</span>
     </div>
 
-    <div class="kpi-card" id="kpi-delay-card" style="border-left: 4px solid var(--sem-red);">
-      <span class="kpi-label">Control Anti-Retrasos (Vuelta)</span>
-      <span class="kpi-value" id="kpi-delays-count">0 alertas</span>
-      <span class="kpi-sub" id="kpi-delays-sub">Separación Ida vs Vuelta al local</span>
+    <div class="kpi-card" style="border-left: 4px solid #fbbf24; cursor:pointer;" onclick="scrollToCashSection()">
+      <span class="kpi-label">Total Caja (Fecha Elegida)</span>
+      <span class="kpi-value" id="kpi-cash-total" style="color:#fbbf24;">0.00 €</span>
+      <span class="kpi-sub" id="kpi-cash-sub">Pulsa para ir al Cierre de Caja ↓</span>
     </div>
   </section>
 
@@ -122,19 +120,18 @@
     <div class="fleet-header">
       <div class="fleet-title-box">
         <h2>
-          <span>🗺️ Google Maps Callejero en Vivo de Madrid y Control de Retorno (+1h)</span>
+          <span>🗺️ Radar GPS en Vivo de Madrid y Estado de Turno de Repartidores</span>
         </h2>
         <p>
-          Arrastra con el ratón para moverte por Madrid o usa la rueda para hacer zoom. Las calles, sentidos y paradas de Metro se ven a todo color.
+          Control en directo de salidas desde C/ Manuela Malasaña, 5 y horarios de inicio/cierre de turno.
         </p>
       </div>
 
       <div class="fleet-toolbar">
         <select id="map-style-select" class="btn-mini" onchange="changeMapTileStyle(this.value)" style="background:#0f172a; color:#38bdf8; border-color:#38bdf8;">
-          <option value="google_streets" selected>🗺️ Google Maps Callejero (Madrid)</option>
-          <option value="google_hybrid">🛰️ Google Satélite + Calles</option>
-          <option value="esri_streets">🏙️ Callejero Esri Detallado</option>
-          <option value="osm">🌍 OpenStreetMap Clásico</option>
+          <option value="google_streets" selected>🗺️ Google Maps Callejero</option>
+          <option value="google_hybrid">🛰️ Google Satélite</option>
+          <option value="osm">🌍 OpenStreetMap</option>
         </select>
 
         <button class="btn-mini btn-mini-cyan" onclick="centerMapOnBase()">
@@ -148,109 +145,192 @@
         <button class="btn-mini" id="btn-expand-map" onclick="toggleExpandMap()">
           🔍 Ampliar Mapa
         </button>
-
-        <button class="btn-mini btn-mini-orange" id="btn-sim-gps" onclick="toggleGpsSimulation()">
-          ▶️ Simular GPS en Vivo
-        </button>
       </div>
     </div>
 
     <div class="fleet-grid" id="fleet-grid-container">
-      <!-- Mapa GPS interactivo de Madrid -->
       <div class="gps-map-wrapper">
         <div id="kds-live-map"></div>
         <div class="map-footer-legend">
           <div class="legend-items">
             <span class="legend-dot"><span class="dot-circle" style="background:#d9531e;"></span> Obrador (Malasaña 5)</span>
             <span class="legend-dot"><span class="dot-circle" style="background:#10b981;"></span> 🟢 En tiempo / En Base</span>
-            <span class="legend-dot"><span class="dot-circle" style="background:#f59e0b;"></span> 🟡 Justo (&lt;5m margen)</span>
-            <span class="legend-dot"><span class="dot-circle" style="background:#ef4444;"></span> 🔴 Retraso / Parado en vuelta</span>
+            <span class="legend-dot"><span class="dot-circle" style="background:#f59e0b;"></span> 🟡 Justo</span>
+            <span class="legend-dot"><span class="dot-circle" style="background:#ef4444;"></span> 🔴 Retraso</span>
           </div>
-          <span id="gps-last-sync" style="color:#34d399; font-weight:700;">📡 Conectado en tiempo real con Móviles</span>
+          <span id="gps-last-sync" style="color:#34d399; font-weight:700;">📡 Conectado en tiempo real</span>
         </div>
       </div>
 
-      <!-- Tarjetas de Repartidores con Cronómetro de Ida, Check de Entrega y Cronómetro de Vuelta -->
-      <div class="riders-cards-list" id="kds-riders-list">
-        <!-- Renderizado dinámico desde cocina.js -->
+      <div class="riders-cards-list" id="kds-riders-list"></div>
+    </div>
+  </section>
+
+  <!-- 4. Tablón de Comandas por Tramas Horarias (13:00 a 16:00 cada 30 min) -->
+  <section style="padding: 14px 16px 4px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+      <h2 style="font-size:1.05rem; font-weight:800; color:#f8fafc;">
+        🥘 Tablón de Comandas por Horas (Haz clic en el precio € de cualquier pedido si deseas editarlo al instante)
+      </h2>
+      <button type="button" class="btn-mini btn-mini-orange" onclick="openManualOrderModal()">
+        ➕ Añadir Comanda Rápida
+      </button>
+    </div>
+  </section>
+
+  <main class="slots-container" id="kds-slots-grid"></main>
+
+  <!-- 5. NUEVA SECCIÓN: CIERRE DE REPARTIDORES Y ARQUEO DE CAJA FINAL DE TURNO -->
+  <section class="cash-closing-section" id="cash-closing-section">
+    <div class="cash-header">
+      <div>
+        <h2>💰 Cierre de Repartidores y Caja Final de Turno</h2>
+        <p>
+          Asigna cómo ha pagado cada pedido (Efectivo, Tarjeta, Transferencia, Bizum o Pago Mixto dividido, ej. 100€ efectivo + 15€ tarjeta) y pulsa <strong>✅ OK</strong> para pasarlo a Cierre Correcto.
+        </p>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="button" class="btn-kds" onclick="openManualAdjustmentModal()" style="background:#f59e0b; border-color:#d97706; color:#0f172a; font-weight:900;">
+          ➕ / ➖ Añadir Extra o Pago de Caja Manual
+        </button>
+      </div>
+    </div>
+
+    <!-- Tarjetas de Resumen General de Caja por Método de Pago -->
+    <div class="cash-summary-grid" id="cash-summary-cards"></div>
+
+    <!-- Calculadora de Efectivo (Billetes y Monedas) + Ajustes Manuales (+ / -) -->
+    <div class="cash-tools-grid">
+      <!-- Desglose de Efectivo en Billetes y Monedas -->
+      <div class="cash-tool-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
+          <h3 style="font-size:0.95rem; font-weight:800; color:#34d399;">
+            💵 Desglose de Efectivo (Billetes y Monedas en Caja)
+          </h3>
+          <button type="button" class="btn-mini" onclick="resetCashBreakdown()">🔄 Poner a 0</button>
+        </div>
+
+        <div class="bills-coins-summary-inputs">
+          <div>
+            <label class="form-label" style="color:#a7f3d0;">💵 Total en Billetes (€)</label>
+            <input type="number" step="0.01" id="cash-bills-direct" class="form-input" placeholder="0.00" oninput="onDirectBillsCoinsInput()">
+          </div>
+          <div>
+            <label class="form-label" style="color:#fde68a;">🪙 Total en Monedas (€)</label>
+            <input type="number" step="0.01" id="cash-coins-direct" class="form-input" placeholder="0.00" oninput="onDirectBillsCoinsInput()">
+          </div>
+          <div class="cash-counted-result" id="cash-counted-diff-box">
+            <span>Contado: 0.00 €</span>
+          </div>
+        </div>
+
+        <!-- Desplegable opcional para contar billete por billete y moneda por moneda -->
+        <details style="margin-top:10px;">
+          <summary style="cursor:pointer; font-size:0.78rem; font-weight:700; color:#38bdf8; user-select:none;">
+            🔢 Abrir contador rápido por tipo de Billete (500€..5€) y Moneda (2€..0.05€)
+          </summary>
+          <div class="denominations-grid" id="denominations-container" style="margin-top:10px;"></div>
+        </details>
+      </div>
+
+      <!-- Movimientos Manuales de Caja (+ Extras / - Pagos sacados de Caja) -->
+      <div class="cash-tool-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h3 style="font-size:0.95rem; font-weight:800; color:#fbbf24;">
+            ➕ / ➖ Ajustes Manuales de Caja (Extras o Pagos de Caja)
+          </h3>
+        </div>
+
+        <form onsubmit="event.preventDefault(); addCashManualMovement();" class="cash-adj-form">
+          <input type="text" id="adj-concept" class="form-input" placeholder="Concepto (ej: Pago hielo, Cambio inicial, Propina...)" required>
+          <input type="number" step="0.01" id="adj-amount" class="form-input" placeholder="Importe € (ej: -15 o 20)" required>
+          <select id="adj-method" class="form-select">
+            <option value="cash">💵 Efectivo (Caja)</option>
+            <option value="card">💳 Tarjeta</option>
+            <option value="transfer">🏦 Transferencia</option>
+            <option value="bizum">📲 Bizum</option>
+          </select>
+          <button type="submit" class="btn-kds btn-kds-primary" style="padding:8px 14px; white-space:nowrap;">
+            ➕ Añadir
+          </button>
+        </form>
+
+        <div id="cash-adjustments-list" class="cash-adj-list"></div>
+      </div>
+    </div>
+
+    <!-- TABLA DOBLE DE REPARTIDORES: PENDIENTES DE LIQUIDAR (IZQUIERDA) ➔ LIQUIDADOS OK (DERECHA) -->
+    <div class="settlement-two-columns">
+      <!-- Lado Izquierdo: Pendientes de revisar/liquidar -->
+      <div class="settlement-column pending-col">
+        <div class="settlement-col-header">
+          <span>⏳ 1. PENDIENTES DE CIERRE (Modifica Efectivo / Tarjeta / Transf / Bizum y pulsa OK)</span>
+          <span class="settlement-badge" id="settlement-pending-count">0</span>
+        </div>
+        <div id="settlement-pending-body" class="settlement-list-body"></div>
+      </div>
+
+      <!-- Lado Derecho: Liquidados / Cierre Correcto -->
+      <div class="settlement-column settled-col">
+        <div class="settlement-col-header settled-header">
+          <span>✅ 2. CIERRE CORRECTO / LIQUIDADOS (OK)</span>
+          <span class="settlement-badge settled-badge" id="settlement-done-count">0</span>
+        </div>
+        <div id="settlement-done-body" class="settlement-list-body"></div>
       </div>
     </div>
   </section>
 
-  <!-- 4. Tablón Horizontal de Tramas Horarias (13:00 a 16:00 cada 30 min) -->
-  <main class="slots-container" id="kds-slots-grid">
-    <!-- Renderizado dinámico desde cocina.js -->
-  </main>
-
-  <!-- 5. Modal para Conectar y Probar en el Móvil (QR + Enviar por WhatsApp) -->
+  <!-- 6. Modal para Conectar y Probar en el Móvil (QR + WhatsApp) -->
   <div class="modal-overlay" id="mobile-connect-modal">
     <div class="modal-content" style="max-width: 500px; text-align: center;">
       <button class="modal-close-btn" onclick="closeMobileConnectModal()">&times;</button>
-      <div style="font-size: 2.2rem; margin-bottom: 4px;">📲</div>
-      <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 6px;">Probar App de Repartidor en tu Móvil</h2>
-      <p style="font-size: 0.82rem; color: #cbd5e1; margin-bottom: 14px;">
-        Escanea este código QR con la cámara de tu móvil o envíate el enlace por WhatsApp. <strong>Lo que toques en el móvil actualizará este tablón de cocina en tiempo real</strong> (funciona con Wi-Fi y con 4G/5G).
+      <div style="font-size: 2rem; margin-bottom: 4px;">📲</div>
+      <h2 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 6px;">Conectar Móviles o iPad en Vivo</h2>
+      <p style="font-size: 0.8rem; color: #cbd5e1; margin-bottom: 14px;">
+        Escanea este código QR para abrir la App en el móvil del repartidor o en el iPad.
       </p>
 
-      <!-- Selector de qué pantalla abrir en el móvil -->
       <div style="text-align:left; margin-bottom:12px;">
-        <label class="form-label">¿Qué pantalla quieres abrir en el móvil?</label>
+        <label class="form-label">¿Qué pantalla quieres abrir?</label>
         <select id="mobile-link-target" class="form-select" onchange="updateMobileQrAndLinks()">
-          <option value="/repartidor.html" selected>🛵 App Móvil del Repartidor (GPS + Marcar Entregado)</option>
-          <option value="/cocina.html">🥘 Tablón de Cocina y Radar GPS completo</option>
+          <option value="/repartidor.html" selected>🛵 App Móvil del Repartidor (Turno + Entregado)</option>
+          <option value="/cocina.html">🥘 Panel de Cocina, Radar y Caja (Para iPad / Móvil)</option>
           <option value="/index.html">🛒 Carta Web de Clientes (Pedidos Online)</option>
         </select>
       </div>
 
-      <!-- Selector de Modo de Conexión (Túnel 4G/5G vs Wi-Fi Directo) -->
-      <div style="display:flex; gap:6px; justify-content:center; margin-bottom:10px;">
-        <button type="button" id="qr-mode-tunnel" class="date-quick-btn active" onclick="setMobileQrMode('tunnel')" style="font-size:0.75rem;">
-          🌐 Túnel 4G/5G + GPS (Auto-actualizable)
-        </button>
-        <button type="button" id="qr-mode-wifi" class="date-quick-btn" onclick="setMobileQrMode('wifi')" style="font-size:0.75rem;">
-          📶 Wi-Fi Directo (192.168.1.41 - Nunca caduca)
-        </button>
+      <div style="background: white; padding: 14px; border-radius: 16px; display: inline-block; margin-bottom: 14px;">
+        <img id="mobile-qr-img" src="" alt="Código QR" style="width: 200px; height: 200px; display: block;">
       </div>
 
-      <!-- Caja del Código QR -->
-      <div style="background: white; padding: 16px; border-radius: 16px; display: inline-block; margin-bottom: 14px; box-shadow: 0 8px 25px rgba(0,0,0,0.4);">
-        <img id="mobile-qr-img" src="" alt="Código QR Móvil" style="width: 210px; height: 210px; display: block;">
-      </div>
-
-      <!-- Enlace copiable -->
       <div style="background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 10px; margin-bottom: 14px; text-align: left;">
-        <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">Enlace directo para móvil:</div>
+        <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 700;">Enlace permanente en la nube:</div>
         <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
           <input type="text" id="mobile-public-url-input" class="form-input" readonly style="font-size:0.8rem; padding:7px 10px; color:#38bdf8; font-weight:700;" value="https://xiomar0311-svg.github.io/pedidos/repartidor.html">
-          <button type="button" class="btn-kds" onclick="copyMobileUrl()" style="padding:7px 12px; white-space:nowrap;">📋 Copiar</button>
-        </div>
-        <div style="font-size: 0.72rem; color: #64748b; margin-top: 6px;">
-          💡 Si estás en el mismo Wi-Fi de casa/local también puedes usar: <code style="color:#cbd5e1;">http://192.168.1.41:8080/repartidor.html</code>
+          <button type="button" class="btn-kds" onclick="copyMobileUrl()" style="padding:7px 12px;">📋 Copiar</button>
         </div>
       </div>
 
-      <!-- Botón directo para mandárselo por WhatsApp -->
-      <div style="display:flex; flex-direction:column; gap:8px;">
-        <a id="btn-send-wa-mobile" href="#" target="_blank" class="btn-kds btn-kds-primary" style="justify-content:center; padding:12px; font-size:0.92rem; background:#10b981; border-color:#10b981; color:#052e16;">
-          <span>💬</span> <span>Enviarme el enlace por WhatsApp para abrirlo en el móvil</span>
-        </a>
-      </div>
+      <a id="btn-send-wa-mobile" href="#" target="_blank" class="btn-kds btn-kds-primary" style="justify-content:center; padding:12px; font-size:0.9rem; background:#10b981; border-color:#10b981; color:#052e16; width:100%;">
+        <span>💬</span> <span>Enviar enlace por WhatsApp</span>
+      </a>
     </div>
   </div>
 
-  <!-- 6. Modal para Añadir o Editar Comanda / Reserva para Cualquier Fecha -->
+  <!-- 7. Modal para Registrar o Editar Pedido (Con toda la Carta Oficial + Apartado Varios + Cálculo Automático y Edición Libre) -->
   <div class="modal-overlay" id="manual-order-modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 680px;">
       <button class="modal-close-btn" onclick="closeManualModal()">&times;</button>
-      <h2 id="manual-modal-title" style="font-size: 1.25rem; font-weight: 800; margin-bottom: 4px;">➕ Nueva Comanda / Reserva por Teléfono</h2>
-      <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 16px;">
-        Elige cualquier fecha del calendario. El sistema calcula distancia desde C/ Manuela Malasaña 5, tiempo de ida+subir y vuelta.
+      <h2 id="manual-modal-title" style="font-size: 1.22rem; font-weight: 800; margin-bottom: 4px;">➕ Registrar Pedido / Reserva</h2>
+      <p style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 14px;">
+        Selecciona paellas o raciones de la carta oficial y añade cualquier importe en el apartado de <strong>Varios</strong>. El precio se suma solo y también puedes editarlo a mano.
       </p>
 
       <form onsubmit="event.preventDefault(); saveManualPhoneOrder();">
         <input type="hidden" id="m-edit-order-id" value="">
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="form-row-2col">
           <div class="form-group">
             <label class="form-label">Nombre del cliente *</label>
             <input type="text" id="m-client-name" class="form-input" placeholder="Ej: Javier López" required>
@@ -261,117 +341,166 @@
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 10px;">
+        <div class="form-row-3col">
           <div class="form-group">
-            <label class="form-label">📅 Fecha de la Reserva / Pedido *</label>
+            <label class="form-label">📅 Fecha *</label>
             <input type="date" id="m-order-date" class="form-input" required>
           </div>
           <div class="form-group">
-            <label class="form-label">⏰ Hora Salida de Cocina (Entrega +30m) *</label>
+            <label class="form-label">⏰ Hora Salida Cocina *</label>
             <select id="m-slot" class="form-select">
-              <option value="13:00">🔥 Sale 13:00h (Entrega ~13:30h ➔ Vuelve 14:00h)</option>
-              <option value="13:30">🔥 Sale 13:30h (Entrega ~14:00h ➔ Vuelve 14:30h)</option>
-              <option value="14:00" selected>🔥 Sale 14:00h (Entrega ~14:30h ➔ Vuelve 15:00h)</option>
-              <option value="14:30">🔥 Sale 14:30h (Entrega ~15:00h ➔ Vuelve 15:30h)</option>
-              <option value="15:00">🔥 Sale 15:00h (Entrega ~15:30h ➔ Vuelve 16:00h)</option>
-              <option value="15:30">🔥 Sale 15:30h (Entrega ~16:00h ➔ Vuelve 16:30h)</option>
-              <option value="16:00">🔥 Sale 16:00h (Última ronda)</option>
+              <option value="13:00">13:00h (Entrega ~13:30h)</option>
+              <option value="13:30">13:30h (Entrega ~14:00h)</option>
+              <option value="14:00" selected>14:00h (Entrega ~14:30h)</option>
+              <option value="14:30">14:30h (Entrega ~15:00h)</option>
+              <option value="15:00">15:00h (Entrega ~15:30h)</option>
+              <option value="15:30">15:30h (Entrega ~16:00h)</option>
+              <option value="16:00">16:00h (Última ronda)</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">🚚 Modalidad *</label>
+            <select id="m-type" class="form-select" onchange="onModalDeliveryTypeChange()">
+              <option value="delivery_whole" selected>🛵 Entrega a Domicilio</option>
+              <option value="pickup">🏢 Recoger en Tienda</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" id="m-address-group">
+          <label class="form-label">📍 Dirección de entrega en Madrid:</label>
+          <input type="text" id="m-address" class="form-input" placeholder="Ej: Calle Fuencarral 88, 3º D (o Paseo de la Castellana 120)">
+        </div>
+
+        <!-- CONSTRUCTOR DE PLATOS DE LA CARTA OFICIAL -->
+        <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:12px; margin-bottom:12px;">
+          <div style="font-size:0.8rem; font-weight:800; color:#38bdf8; margin-bottom:8px;">
+            🥘 1. Añadir Plato de la Carta Oficial (Solo nombre y raciones, ej: Paella Valenciana 6px)
+          </div>
+          <div class="builder-row">
+            <select id="m-rice" class="form-select" onchange="updateBuilderItemPreviewPrice()">
+              <optgroup label="🌾 Carta de la Tierra">
+                <option value="Paella Valenciana">Paella Valenciana (6px: 115€)</option>
+                <option value="Paella Valenciana (Versión Castellón)">Paella Valenciana Versión Castellón (6px: 115€)</option>
+                <option value="Paella de la Abuela">Paella de la Abuela (6px: 115€)</option>
+                <option value="Paella Rústica">Paella Rústica (6px: 115€)</option>
+                <option value="Paella Carmelita">Paella Carmelita (6px: 115€)</option>
+                <option value="Paella de Verduras">Paella de Verduras (6px: 115€)</option>
+                <option value="Arroz al Horno">Arroz al Horno (6px: 121€)</option>
+              </optgroup>
+              <optgroup label="🌊 Carta del Mar">
+                <option value="Arroz a Banda">Arroz a Banda (6px: 115€)</option>
+                <option value="Arroz Negro">Arroz Negro (6px: 115€)</option>
+                <option value="Arroz al Señoret">Arroz al Señoret (6px: 115€)</option>
+                <option value="A Banda con Gambón">A Banda con Gambón (6px: 121€)</option>
+                <option value="Arroz del Turia">Arroz del Turia (6px: 121€)</option>
+                <option value="Fideuá">Fideuá (6px: 115€)</option>
+                <option value="Fideuá Negra">Fideuá Negra (6px: 115€)</option>
+              </optgroup>
+            </select>
+
+            <select id="m-format" class="form-select" onchange="updateBuilderItemPreviewPrice()">
+              <optgroup label="🥘 Paella Completa (6 a 10 personas)">
+                <option value="6px" selected>6px (6 personas)</option>
+                <option value="7px">7px (7 personas)</option>
+                <option value="8px">8px (8 personas)</option>
+                <option value="9px">9px (9 personas)</option>
+                <option value="10px">10px (10 personas)</option>
+              </optgroup>
+              <optgroup label="🥡 Raciones en Tupper">
+                <option value="1r">1 Ración en tupper</option>
+                <option value="2r">2 Raciones en tupper</option>
+                <option value="3r">3 Raciones en tupper</option>
+                <option value="4r">4 Raciones en tupper</option>
+                <option value="5r">5 Raciones en tupper</option>
+                <option value="6r">6 Raciones en tupper</option>
+              </optgroup>
+            </select>
+
+            <input type="number" step="0.01" id="m-item-price" class="form-input" style="max-width:95px; font-weight:800; color:#fbbf24;" value="115" title="Precio de este plato (€)">
+
+            <button type="button" class="btn-kds btn-kds-primary" onclick="addDishToDraftOrder()" style="padding:8px 12px; white-space:nowrap;">
+              ➕ Añadir Plato
+            </button>
+          </div>
+        </div>
+
+        <!-- APARTADO DE VARIOS (CONCEPTO A ELEGIR + IMPORTE A ELEGIR) -->
+        <div style="background:#0f172a; border:1px dashed #f59e0b; border-radius:12px; padding:12px; margin-bottom:12px;">
+          <div style="font-size:0.8rem; font-weight:800; color:#fbbf24; margin-bottom:8px;">
+            ✨ 2. Apartado de VARIOS (Escribe cualquier concepto e importe en € para sumarlo a la comanda)
+          </div>
+          <div class="builder-row">
+            <input type="text" id="m-varios-concept" class="form-input" placeholder="Concepto (ej: Servicio de noche, Bebidas, Pan, Alioli extra, Descuento...)" style="flex:1.6;">
+            <input type="number" step="0.01" id="m-varios-amount" class="form-input" placeholder="Importe € (ej: 20)" style="max-width:125px; font-weight:800; color:#fbbf24;">
+            <button type="button" class="btn-kds" onclick="addVariosToDraftOrder()" style="background:#f59e0b; border-color:#d97706; color:#0f172a; font-weight:800; padding:8px 12px; white-space:nowrap;">
+              ➕ Sumar Varios
+            </button>
+          </div>
+        </div>
+
+        <!-- LISTA DE LÍNEAS DE LA COMANDA ACTUAL (CON PRECIOS EDITABLES Y TOTAL AUTOMÁTICO) -->
+        <div style="background:#090d16; border:1.5px solid #334155; border-radius:12px; padding:12px; margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:0.78rem; font-weight:800; color:#cbd5e1; text-transform:uppercase;">
+              📋 Líneas en esta comanda:
+            </span>
+            <span style="font-size:0.74rem; color:#94a3b8;">Puedes cambiar cualquier importe o el Total directamente</span>
+          </div>
+
+          <div id="m-draft-items-list" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px solid #334155; gap:10px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:0.84rem; font-weight:800; color:#f8fafc;">💳 Método de pago previsto:</label>
+              <select id="m-payment-method" class="form-select" style="width:auto; padding:6px 10px;">
+                <option value="cash">💵 Efectivo</option>
+                <option value="card">💳 Tarjeta</option>
+                <option value="bizum">📲 Bizum</option>
+                <option value="transfer">🏦 Transferencia</option>
+              </select>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label for="m-total" style="font-size:0.95rem; font-weight:900; color:#fbbf24;">TOTAL COMANDA (€):</label>
+              <input type="number" step="0.01" id="m-total" class="form-input" style="width:120px; font-size:1.1rem; font-weight:900; color:#10b981; text-align:right;" value="115.00" oninput="onManualTotalEdited()">
+            </div>
           </div>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Tipo de entrega *</label>
-          <select id="m-type" class="form-select" onchange="document.getElementById('m-address-group').style.display = this.value === 'pickup' ? 'none' : 'block'">
-            <option value="delivery_whole" selected>🥘 Paella grande a domicilio</option>
-            <option value="delivery_portions">🛵 Raciones a domicilio</option>
-            <option value="pickup">🏢 Recoger en Obrador (Malasaña 5)</option>
-          </select>
+          <label class="form-label">Notas para cocina o repartidor (opcional):</label>
+          <input type="text" id="m-notes" class="form-input" placeholder="Ej: Timbre 4º B, llevar cambio de 50€, sin romero...">
         </div>
 
-        <div class="form-group" id="m-address-group" style="display: block;">
-          <label class="form-label">Dirección en Madrid (calcula km, tiempo de ida+subir y vuelta):</label>
-          <input type="text" id="m-address" class="form-input" placeholder="Ej: Paseo de la Castellana 120, Chamartín (o C/ Fuencarral 40)">
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px;">
-          <div class="form-group">
-            <label class="form-label">Variedad de Arroz *</label>
-            <select id="m-rice" class="form-select">
-              <option value="Paella Valenciana Tradicional">Paella Valenciana</option>
-              <option value="Arroz al Senyoret">Arroz al Senyoret</option>
-              <option value="Arroz al Horno (Arròs al Forn)">Arroz al Horno</option>
-              <option value="Arroz a Banda">Arroz a Banda</option>
-              <option value="Arroz Negro con Sepia">Arroz Negro</option>
-              <option value="Paella de la Abuela">Paella de la Abuela</option>
-              <option value="Paella Rústica">Paella Rústica</option>
-              <option value="Paella de Verduras">Paella de Verduras</option>
-              <option value="Fideuà de Gandía">Fideuà de Gandía</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Formato *</label>
-            <select id="m-format" class="form-select">
-              <option value="Paella grande para 6 personas">🥘 Paella grande (6p) - 115€</option>
-              <option value="Paella grande para 7 personas">🥘 Paella grande (7p) - 130€</option>
-              <option value="Paella grande para 8 personas">🥘 Paella grande (8p) - 145€</option>
-              <option value="Paella grande para 9 personas">🥘 Paella grande (9p) - 160€</option>
-              <option value="Paella grande para 10 personas">🥘 Paella grande (10p) - 175€</option>
-              <option value="2 raciones individuales">🍽️ 2 raciones</option>
-              <option value="3 raciones individuales">🍽️ 3 raciones</option>
-              <option value="4 raciones individuales">🍽️ 4 raciones</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-          <div class="form-group">
-            <label class="form-label">Punto de cocción</label>
-            <select id="m-option" class="form-select">
-              <option value="Socarrat tostado">Socarrat tostado</option>
-              <option value="Punto estándar">Punto estándar</option>
-              <option value="Sin tostar">Sin tostar</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Total (€)</label>
-            <input type="number" step="0.01" id="m-total" class="form-input" placeholder="Ej: 115.00" value="115">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Notas de cocina o timbre/piso para el repartidor:</label>
-          <input type="text" id="m-notes" class="form-input" placeholder="Ej: 4º B, portero automático, llevar cambio de 50€...">
-        </div>
-
-        <button type="submit" class="btn-kds btn-kds-primary" style="width: 100%; justify-content: center; padding: 12px; margin-top: 10px;">
+        <button type="submit" class="btn-kds btn-kds-primary" style="width: 100%; justify-content: center; padding: 13px; font-size:0.95rem; margin-top: 6px;">
           💾 Guardar Comanda en el Tablón
         </button>
       </form>
     </div>
   </div>
 
-  <!-- 7. Modal para Gestionar la Plantilla de Repartidores -->
+  <!-- 8. Modal para Gestionar la Plantilla de Repartidores -->
   <div class="modal-overlay" id="riders-manage-modal">
     <div class="modal-content">
       <button class="modal-close-btn" onclick="closeRidersModal()">&times;</button>
-      <h2 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 4px;">👥 Equipo de Repartidores (Bicis y Coches)</h2>
+      <h2 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 4px;">👥 Equipo de Repartidores</h2>
       <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 14px;">
-        Añade o edita tus repartidores del turno. Pulsa en "📲 Enviar a su Móvil" para mandarle su enlace directo por WhatsApp.
+        Añade o edita tus repartidores del turno.
       </p>
 
       <div id="riders-modal-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;"></div>
 
       <form onsubmit="event.preventDefault(); addNewRider();" style="background:#0f172a; padding:12px; border-radius:10px; border:1px solid #334155;">
         <div style="font-size:0.82rem; font-weight:800; margin-bottom:8px; color:#38bdf8;">➕ Añadir Nuevo Repartidor</div>
-        <div style="display:grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap:8px; align-items:end;">
+        <div class="form-row-3col">
           <div>
             <label class="form-label" style="font-size:0.72rem;">Nombre *</label>
-            <input type="text" id="new-rider-name" class="form-input" placeholder="Ej: Dani (Bici 1)" required style="padding:7px 10px; font-size:0.82rem;">
+            <input type="text" id="new-rider-name" class="form-input" placeholder="Ej: Dani (Bici 1)" required>
           </div>
           <div>
             <label class="form-label" style="font-size:0.72rem;">Vehículo *</label>
-            <select id="new-rider-vehicle" class="form-select" style="padding:7px 10px; font-size:0.82rem;">
+            <select id="new-rider-vehicle" class="form-select">
               <option value="bike">🚲 Bici de Carga</option>
               <option value="car">🚗 Coche</option>
               <option value="moto">🛵 Moto</option>
@@ -379,17 +508,18 @@
           </div>
           <div>
             <label class="form-label" style="font-size:0.72rem;">Teléfono WhatsApp *</label>
-            <input type="tel" id="new-rider-phone" class="form-input" placeholder="600 000 000" required style="padding:7px 10px; font-size:0.82rem;">
+            <input type="tel" id="new-rider-phone" class="form-input" placeholder="600 000 000" required>
           </div>
-          <button type="submit" class="btn-kds btn-kds-primary" style="padding:8px 12px;">Añadir</button>
         </div>
+        <button type="submit" class="btn-kds btn-kds-primary" style="width:100%; justify-content:center; margin-top:10px; padding:9px;">➕ Añadir Repartidor</button>
       </form>
     </div>
   </div>
 
-  <!-- Librerías Locales (Leaflet + MQTT en tiempo real para sincronizar con el móvil) -->
+  <!-- Librerías Locales -->
   <script src="leaflet.js"></script>
   <script src="mqtt.min.js"></script>
+  <script src="data.js"></script>
   <script src="tunnel.js"></script>
   <script src="cocina.js"></script>
 </body>

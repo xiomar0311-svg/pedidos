@@ -1214,3 +1214,452 @@ body {
   cursor: pointer;
   font-size: 1.2rem;
 }
+
+/* ========================================================
+   FILAS DEL MODAL Y CONSTRUCTOR DE COMANDAS + VARIOS
+   ======================================================== */
+.form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.form-row-3col {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 10px;
+}
+
+.builder-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.builder-row .form-select,
+.builder-row .form-input {
+  flex: 1 1 140px;
+}
+
+/* ========================================================
+   SECCIÓN DE CIERRE DE REPARTIDORES Y ARQUEO DE CAJA
+   ======================================================== */
+.cash-closing-section {
+  margin: 18px 16px 40px;
+  background: #111827;
+  border: 2px solid #334155;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.cash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #334155;
+  margin-bottom: 16px;
+}
+
+.cash-header h2 {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #fbbf24;
+}
+
+.cash-header p {
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  margin-top: 3px;
+}
+
+.cash-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.cash-kpi-card {
+  background: #0f172a;
+  border: 1.5px solid #334155;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.cash-card-green { border-left: 5px solid #10b981; }
+.cash-card-blue { border-left: 5px solid #38bdf8; }
+.cash-card-purple { border-left: 5px solid #a855f7; }
+.cash-card-cyan { border-left: 5px solid #06b6d4; }
+.cash-card-gold { border-left: 5px solid #fbbf24; background: #172033; }
+
+.cash-kpi-title {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.cash-kpi-amount {
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: #f8fafc;
+  margin: 4px 0;
+}
+
+.cash-card-green .cash-kpi-amount { color: #34d399; }
+.cash-card-blue .cash-kpi-amount { color: #38bdf8; }
+.cash-card-purple .cash-kpi-amount { color: #c084fc; }
+.cash-card-cyan .cash-kpi-amount { color: #22d3ee; }
+.cash-card-gold .cash-kpi-amount { color: #fbbf24; }
+
+.cash-kpi-detail {
+  font-size: 0.74rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.cash-tools-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.cash-tool-box {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.bills-coins-summary-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr;
+  gap: 10px;
+  align-items: end;
+}
+
+.cash-counted-result {
+  background: #162032;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.denominations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.denom-item {
+  background: #162032;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.denom-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.denom-label.bill { color: #34d399; }
+.denom-label.coin { color: #fbbf24; }
+
+.denom-input {
+  padding: 5px 8px;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.cash-adj-form {
+  display: grid;
+  grid-template-columns: 1.6fr 0.9fr 1fr auto;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cash-adj-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 165px;
+  overflow-y: auto;
+}
+
+.cash-adj-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #162032;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+/* TABLA DE DOS LADOS: PENDIENTES (IZQUIERDA) ➔ CIERRE CORRECTO OK (DERECHA) */
+.settlement-two-columns {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 16px;
+}
+
+.settlement-column {
+  background: #0f172a;
+  border: 1.5px solid #334155;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.settlement-column.settled-col {
+  border-color: #059669;
+}
+
+.settlement-col-header {
+  background: #1e293b;
+  padding: 12px 14px;
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #fbbf24;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #334155;
+}
+
+.settlement-col-header.settled-header {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border-bottom-color: #059669;
+}
+
+.settlement-badge {
+  background: #334155;
+  color: #fff;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+}
+
+.settlement-badge.settled-badge {
+  background: #10b981;
+  color: #052e16;
+}
+
+.settlement-list-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 680px;
+  overflow-y: auto;
+}
+
+.settlement-empty {
+  text-align: center;
+  padding: 32px 14px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.settlement-card {
+  background: #162032;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.settlement-card.settled-item {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.settlement-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settlement-rider-tag {
+  background: #0284c7;
+  color: #fff;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.settlement-rider-tag.settled {
+  background: #10b981;
+  color: #052e16;
+}
+
+.quick-pay-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+
+.btn-pay-quick {
+  background: #0f172a;
+  border: 1px solid #475569;
+  color: #cbd5e1;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.btn-pay-quick.active,
+.btn-pay-quick:hover {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #fff;
+}
+
+.split-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.split-inputs-grid label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #94a3b8;
+  margin-bottom: 3px;
+}
+
+.split-inputs-grid .form-input {
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.settlement-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #334155;
+}
+
+.btn-settle-ok {
+  background: #10b981;
+  color: #052e16;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  cursor: pointer;
+  margin-left: auto;
+  transition: transform 0.1s;
+}
+
+.btn-settle-ok:hover {
+  background: #34d399;
+}
+
+.settled-rider-summary-pill {
+  background: #090d16;
+  border: 1px solid #10b981;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+/* ========================================================
+   OPTIMIZACIÓN RESPONSIVE PARA PORTÁTIL, TABLET/IPAD Y MÓVIL
+   ======================================================== */
+@media (max-width: 1400px) {
+  /* En portátiles e iPads, las columnas de horas se adaptan en cuadrícula cómoda sin cortar nada */
+  .slots-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    overflow-x: visible;
+  }
+  .slot-column {
+    min-width: 0;
+    max-height: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .fleet-grid {
+    grid-template-columns: 1fr;
+  }
+  .gps-map-wrapper {
+    height: 360px;
+  }
+  .cash-tools-grid,
+  .settlement-two-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .kds-header {
+    padding: 10px 12px;
+  }
+  .kds-brand h1 {
+    font-size: 0.98rem;
+  }
+  .kds-actions {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+  }
+  .btn-kds {
+    white-space: nowrap;
+    padding: 7px 10px;
+    font-size: 0.76rem;
+  }
+  .kpi-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .slots-container {
+    grid-template-columns: 1fr;
+    padding: 8px 12px;
+  }
+  .cash-closing-section {
+    margin: 12px 10px 30px;
+    padding: 14px 12px;
+  }
+  .bills-coins-summary-inputs,
+  .cash-adj-form,
+  .form-row-2col,
+  .form-row-3col {
+    grid-template-columns: 1fr;
+  }
+  .split-inputs-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .modal-content {
+    padding: 16px 14px;
+    max-height: 92vh;
+  }
+}

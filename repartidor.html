@@ -7,7 +7,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="leaflet.css">
   <title>App Repartidor GPS | Socarratt Madrid</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -283,20 +282,6 @@
   <!-- Contenedor Dinámico de la Ruta Activa -->
   <div id="active-mission-container"></div>
 
-  <!-- Mapa Navegador GPS Integrado (para llevar en el soporte de la bici sin salir de la web) -->
-  <div class="card" style="padding:12px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-      <span style="font-size:0.8rem; font-weight:800; color:#38bdf8;">🗺️ Mapa Callejero en Vivo (Modo Soporte Bici)</span>
-      <button onclick="centerRiderNavMap()" style="background:#0f172a; color:#38bdf8; border:1px solid #38bdf8; padding:4px 8px; border-radius:6px; font-size:0.72rem; font-weight:800; cursor:pointer;">
-        🎯 Centrar en mí
-      </button>
-    </div>
-    <div id="rider-nav-map" style="width:100%; height:250px; border-radius:12px; border:1px solid #334155; overflow:hidden;"></div>
-    <div style="font-size:0.71rem; color:#94a3b8; margin-top:6px; text-align:center;">
-      💡 Si llevas este mapa en el soporte de la bici, no se apaga la pantalla y Cocina ve tu posición en todo momento.
-    </div>
-  </div>
-
   <!-- Controles rápidos para probar cómo ve Cocina los cambios de posición -->
   <div class="card" style="background:#0b1120; border-style:dashed;">
     <div style="font-size:0.75rem; font-weight:800; color:#94a3b8; margin-bottom:4px;">
@@ -313,7 +298,6 @@
     </a>
   </div>
 
-  <script src="leaflet.js"></script>
   <script src="mqtt.min.js"></script>
   <script>
     const OBRADOR_COORDS = { lat: 40.4288, lng: -3.7042 };
@@ -659,7 +643,6 @@
       window.addEventListener("pageshow", onReturnToApp);
       window.addEventListener("focus", onReturnToApp);
 
-      initRiderNavMap();
       initRealtimeSync();
       renderMission(true);
       setInterval(() => renderMission(false), 3000);
@@ -706,95 +689,6 @@
       return { carMin, bikeMin };
     }
 
-    let riderNavMap = null;
-    let riderSelfMarker = null;
-    let riderDestMarker = null;
-    let riderRouteLine = null;
-
-    function initRiderNavMap() {
-      const mapEl = document.getElementById("rider-nav-map");
-      if (!mapEl || typeof L === "undefined" || riderNavMap) return;
-
-      riderNavMap = L.map("rider-nav-map", {
-        center: [OBRADOR_COORDS.lat, OBRADOR_COORDS.lng],
-        zoom: 15,
-        zoomControl: true
-      });
-
-      L.tileLayer("https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=es", {
-        maxZoom: 20,
-        attribution: "Google Maps"
-      }).addTo(riderNavMap);
-
-      const baseIcon = L.divIcon({
-        className: "",
-        html: `<div style="background:#d9531e;color:#fff;font-weight:900;font-size:11px;padding:3px 7px;border-radius:99px;border:2px solid #fff;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);">🥘 Obrador Malasaña 5</div>`,
-        iconSize: [0, 0]
-      });
-      L.marker([OBRADOR_COORDS.lat, OBRADOR_COORDS.lng], { icon: baseIcon }).addTo(riderNavMap);
-    }
-
-    function updateRiderNavMap(rider, activeOrder) {
-      if (!riderNavMap || typeof L === "undefined") return;
-      const rLat = Number(rider.lat) || OBRADOR_COORDS.lat;
-      const rLng = Number(rider.lng) || OBRADOR_COORDS.lng;
-
-      const selfIcon = L.divIcon({
-        className: "",
-        html: `<div style="background:#10b981;color:#052e16;font-weight:900;font-size:12px;padding:4px 9px;border-radius:99px;border:2px solid #fff;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,0.6);">🚲 Tú (${rider.name})</div>`,
-        iconSize: [0, 0]
-      });
-
-      if (riderSelfMarker) {
-        riderSelfMarker.setLatLng([rLat, rLng]);
-        riderSelfMarker.setIcon(selfIcon);
-      } else {
-        riderSelfMarker = L.marker([rLat, rLng], { icon: selfIcon, zIndexOffset: 500 }).addTo(riderNavMap);
-      }
-
-      if (activeOrder && activeOrder.lat && activeOrder.lng && activeOrder.status !== "returning") {
-        const destIcon = L.divIcon({
-          className: "",
-          html: `<div style="background:#0284c7;color:#fff;font-weight:800;font-size:11px;padding:3px 8px;border-radius:8px;border:2px solid #fff;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);">📍 ${activeOrder.address}</div>`,
-          iconSize: [0, 0]
-        });
-        if (riderDestMarker) {
-          riderDestMarker.setLatLng([activeOrder.lat, activeOrder.lng]);
-          riderDestMarker.setIcon(destIcon);
-        } else {
-          riderDestMarker = L.marker([activeOrder.lat, activeOrder.lng], { icon: destIcon }).addTo(riderNavMap);
-        }
-
-        const coords = [[rLat, rLng], [activeOrder.lat, activeOrder.lng]];
-        if (riderRouteLine) {
-          riderRouteLine.setLatLngs(coords);
-          riderRouteLine.setStyle({ color: "#0284c7", dashArray: null });
-        } else {
-          riderRouteLine = L.polyline(coords, { color: "#0284c7", weight: 4 }).addTo(riderNavMap);
-        }
-      } else {
-        if (riderDestMarker) {
-          riderNavMap.removeLayer(riderDestMarker);
-          riderDestMarker = null;
-        }
-        const coords = [[rLat, rLng], [OBRADOR_COORDS.lat, OBRADOR_COORDS.lng]];
-        if (riderRouteLine) {
-          riderRouteLine.setLatLngs(coords);
-          riderRouteLine.setStyle({ color: "#10b981", dashArray: "6,6" });
-        } else {
-          riderRouteLine = L.polyline(coords, { color: "#10b981", weight: 4, dashArray: "6,6" }).addTo(riderNavMap);
-        }
-      }
-    }
-
-    function centerRiderNavMap() {
-      const rider = riders.find(r => r.id === selectedRiderId);
-      if (!rider || !riderNavMap) return;
-      const rLat = Number(rider.lat) || OBRADOR_COORDS.lat;
-      const rLng = Number(rider.lng) || OBRADOR_COORDS.lng;
-      riderNavMap.flyTo([rLat, rLng], 16, { duration: 0.4 });
-    }
-
     function renderMission(forceRebuild = false) {
       const container = document.getElementById("active-mission-container");
       const rider = riders.find(r => r.id === selectedRiderId);
@@ -812,7 +706,6 @@
 
       const myOrders = orders.filter(o => o.riderId === rider.id && o.status !== "delivered");
       const activeOrder = myOrders.find(o => o.status === "en_route" || o.status === "returning") || myOrders[0];
-      updateRiderNavMap(rider, activeOrder);
 
       const nowMinuteBucket = Math.floor(Date.now() / 30000);
       const sig = activeOrder
@@ -954,7 +847,7 @@
           <p style="font-size:0.82rem; color:#94a3b8; margin-top:2px;">📞 <a href="tel:${activeOrder.clientPhone}" style="color:#cbd5e1;">${activeOrder.clientPhone}</a></p>
 
           <div style="background:#0f172a; border-radius:10px; padding:10px; margin-top:10px; font-size:0.84rem; border:1px dashed #334155;">
-            ${activeOrder.items.map(i => `<div>• <strong style="color:#fbbf24;">${i.highlight || i.name}</strong> (${i.name}) ${i.notes ? `<br><em style="color:#38bdf8;">Nota: ${i.notes}</em>` : ""}</div>`).join("")}
+            ${activeOrder.items.map(i => `<div>• <strong style="color:#fbbf24;">${i.highlight || i.name}</strong> ${i.notes ? `<br><em style="color:#38bdf8;">Nota: ${i.notes}</em>` : ""}</div>`).join("")}
           </div>
 
           ${actionHtml}
