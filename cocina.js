@@ -1500,7 +1500,8 @@ function renderFleetCards() {
             <div class="rider-card-actions">
               <div style="display:flex; gap:6px; flex-wrap:wrap;">
                 <button class="btn-mini btn-mini-cyan" onclick="focusRiderOnMap('${rider.id}')">📍 Mapa</button>
-                <button class="btn-mini" onclick="toggleRiderVehicle('${rider.id}')">🔄 ${vEmoji}</button>
+                <button class="btn-mini" onclick="toggleRiderVehicle('${rider.id}')" title="Cambiar vehículo">🔄 ${vEmoji}</button>
+                <button class="btn-mini" onclick="openEditSingleRider('${rider.id}')" title="Editar nombre, vehículo o teléfono">✏️ Editar</button>
                 <button class="btn-mini" onclick="toggleRiderShiftFromPc('${rider.id}')">
                   ${isRiderOnShift ? '🔴 Cerrar Turno' : '🟢 Abrir Turno'}
                 </button>
@@ -1535,6 +1536,7 @@ function renderFleetCards() {
           <div class="rider-card-actions">
             <div style="display:flex; gap:5px; flex-wrap:wrap;">
               <button class="btn-mini btn-mini-cyan" onclick="focusRiderOnMap('${rider.id}')">📍 Mapa</button>
+              <button class="btn-mini" onclick="openEditSingleRider('${rider.id}')" title="Editar datos del repartidor">✏️ Editar</button>
               ${activeOrder.status === "en_route" ? `
                 <button class="btn-mini btn-mini-orange" onclick="markOrderDeliveredByClient('${activeOrder.id}', 'Confirmado desde Cocina')">
                   ✅ Marcar Entregado
@@ -2815,7 +2817,7 @@ function cycleOrderStatus(orderId) {
 }
 
 // ============================================================================
-// GESTIÓN DE LA PLANTILLA DE REPARTIDORES
+// GESTIÓN Y EDICIÓN DE LA PLANTILLA DE REPARTIDORES
 // ============================================================================
 function openRidersModal() {
   const modal = document.getElementById("riders-manage-modal");
@@ -2823,36 +2825,113 @@ function openRidersModal() {
   modal.classList.add("active");
 }
 
+function openEditSingleRider(riderId) {
+  openRidersModal();
+  setTimeout(() => {
+    const nameInput = document.getElementById(`edit-rider-name-${riderId}`);
+    if (nameInput) {
+      nameInput.focus();
+      nameInput.select();
+    }
+  }, 80);
+}
+
 function closeRidersModal() {
   document.getElementById("riders-manage-modal").classList.remove("active");
+}
+
+function buildRiderWaLink(rider) {
+  const mobileLink = `${PUBLIC_TUNNEL_BASE}/repartidor.html?rider=${rider.id}`;
+  const cleanPhone = String(rider.phone || "").replace(/[^0-9]/g, "");
+  const fullPhone = cleanPhone.length === 9 ? `34${cleanPhone}` : cleanPhone;
+  return `https://wa.me/${fullPhone}?text=${encodeURIComponent(
+    `Hola ${rider.name}, entra aquí desde tu móvil para abrir tu App de Repartidor de Socarratt:\n👉 ${mobileLink}`
+  )}`;
 }
 
 function renderRidersModalList() {
   const listEl = document.getElementById("riders-modal-list");
   if (!listEl) return;
 
+  if (kdsState.riders.length === 0) {
+    listEl.innerHTML = `<div style="font-size:0.8rem; color:#94a3b8; padding:10px; text-align:center;">No hay repartidores registrados. Añade uno abajo.</div>`;
+    return;
+  }
+
   listEl.innerHTML = kdsState.riders
     .map((r) => {
-      const vEmoji = r.vehicle === "bike" ? "🚲 Bici" : r.vehicle === "moto" ? "🛵 Moto" : "🚗 Coche";
-      const mobileLink = `${PUBLIC_TUNNEL_BASE}/repartidor.html?rider=${r.id}`;
-      const waLink = `https://wa.me/${r.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
-        `Hola ${r.name}, entra aquí desde tu móvil para abrir tu App de Repartidor de Socarratt:\n👉 ${mobileLink}`
-      )}`;
+      const waLink = buildRiderWaLink(r);
+      const safeName = String(r.name || "").replace(/"/g, "&quot;");
+      const safePhone = String(r.phone || "").replace(/"/g, "&quot;");
 
       return `
-      <div style="display:flex; justify-content:space-between; align-items:center; background:#0f172a; padding:8px 12px; border-radius:8px; border:1px solid #334155; flex-wrap:wrap; gap:6px;">
-        <div>
-          <strong style="font-size:0.88rem;">${r.name}</strong>
-          <span style="font-size:0.75rem; color:#94a3b8; margin-left:8px;">${vEmoji} &bull; 📞 ${r.phone}</span>
+      <div style="background:#0f172a; padding:10px 12px; border-radius:10px; border:1px solid #334155; display:flex; flex-direction:column; gap:8px;">
+        <div class="form-row-3col" style="gap:8px;">
+          <div>
+            <label class="form-label" style="font-size:0.68rem; color:#94a3b8;">Nombre Repartidor</label>
+            <input type="text" id="edit-rider-name-${r.id}" class="form-input" style="padding:6px 8px; font-size:0.84rem; font-weight:700;" value="${safeName}" onfocus="lastFormInteractionTs = Date.now()" oninput="onRiderInlineEdit('${r.id}')">
+          </div>
+          <div>
+            <label class="form-label" style="font-size:0.68rem; color:#94a3b8;">Vehículo</label>
+            <select id="edit-rider-vehicle-${r.id}" class="form-select" style="padding:6px 8px; font-size:0.84rem;" onfocus="lastFormInteractionTs = Date.now()" onchange="onRiderInlineEdit('${r.id}')">
+              <option value="bike" ${r.vehicle === "bike" ? "selected" : ""}>🚲 Bici de Carga</option>
+              <option value="car" ${r.vehicle === "car" ? "selected" : ""}>🚗 Coche</option>
+              <option value="moto" ${r.vehicle === "moto" ? "selected" : ""}>🛵 Moto</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label" style="font-size:0.68rem; color:#94a3b8;">Teléfono WhatsApp</label>
+            <input type="tel" id="edit-rider-phone-${r.id}" class="form-input" style="padding:6px 8px; font-size:0.84rem;" value="${safePhone}" onfocus="lastFormInteractionTs = Date.now()" oninput="onRiderInlineEdit('${r.id}')">
+          </div>
         </div>
-        <div style="display:flex; gap:6px;">
-          <a href="${waLink}" target="_blank" class="btn-mini btn-mini-green">📲 WhatsApp</a>
-          <button class="btn-mini btn-mini-danger" onclick="deleteRider('${r.id}')">Eliminar</button>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; padding-top:4px; border-top:1px dashed #1e293b;">
+          <span id="rider-save-status-${r.id}" style="font-size:0.72rem; color:#34d399; font-weight:700;">✓ Puedes editar cualquier dato directamente</span>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button type="button" class="btn-mini btn-mini-cyan" onclick="saveEditedRider('${r.id}')">💾 Guardar Cambios</button>
+            <a id="wa-rider-btn-${r.id}" href="${waLink}" target="_blank" class="btn-mini btn-mini-green">📲 Enviar App por WhatsApp</a>
+            <button type="button" class="btn-mini btn-mini-danger" onclick="deleteRider('${r.id}')">🗑️ Eliminar</button>
+          </div>
         </div>
       </div>
     `;
     })
     .join("");
+}
+
+function onRiderInlineEdit(riderId) {
+  lastFormInteractionTs = Date.now();
+  const rider = kdsState.riders.find((r) => r.id === riderId);
+  if (!rider) return;
+
+  const nameEl = document.getElementById(`edit-rider-name-${riderId}`);
+  const vehEl = document.getElementById(`edit-rider-vehicle-${riderId}`);
+  const phoneEl = document.getElementById(`edit-rider-phone-${riderId}`);
+
+  if (nameEl && nameEl.value.trim()) rider.name = nameEl.value.trim();
+  if (vehEl && vehEl.value) rider.vehicle = vehEl.value;
+  if (phoneEl && phoneEl.value.trim()) rider.phone = phoneEl.value.trim();
+
+  const waBtn = document.getElementById(`wa-rider-btn-${riderId}`);
+  if (waBtn) waBtn.href = buildRiderWaLink(rider);
+
+  const statusEl = document.getElementById(`rider-save-status-${riderId}`);
+  if (statusEl) {
+    statusEl.textContent = "✅ Guardado automáticamente";
+    statusEl.style.color = "#34d399";
+  }
+
+  saveKdsRiders();
+  renderAllKds();
+}
+
+function saveEditedRider(riderId) {
+  onRiderInlineEdit(riderId);
+  const statusEl = document.getElementById(`rider-save-status-${riderId}`);
+  if (statusEl) {
+    statusEl.textContent = "💾 ¡Datos actualizados y sincronizados!";
+    statusEl.style.color = "#fbbf24";
+  }
 }
 
 function addNewRider() {
@@ -2879,6 +2958,8 @@ function addNewRider() {
 }
 
 function deleteRider(riderId) {
+  const rider = kdsState.riders.find((r) => r.id === riderId);
+  if (rider && !confirm(`🗑️ ¿Seguro que quieres eliminar al repartidor "${rider.name}"?`)) return;
   kdsState.riders = kdsState.riders.filter((r) => r.id !== riderId);
   saveKdsRiders();
   renderRidersModalList();
