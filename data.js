@@ -235,3 +235,93 @@ function getOfficialPaellaPrice(riceName, people) {
   const extraPx = found ? found.extraPx : 15;
   return base6p + Math.max(0, px - 6) * extraPx;
 }
+
+// ==========================================================================
+// TIENDAS OFICIALES DE SOCARRATT Y PRECIOS DE RACIONES A RECOGER
+// ==========================================================================
+const SOCARRATT_STORES = [
+  {
+    id: "malasana",
+    name: "Malasaña (Obrador Principal)",
+    address: "Calle Manuela Malasaña, 5",
+    schedule: "11:00h a 16:00h",
+    weekdayRacionPrice: 10,
+    weekendRacionPrice: 10,
+    note: "10€ / ración"
+  },
+  {
+    id: "imperial",
+    name: "Imperial (Juan Duque)",
+    address: "Calle Juan Duque, 34",
+    schedule: "12:30h a 16:00h",
+    weekdayRacionPrice: 6,
+    weekendRacionPrice: 10,
+    note: "6€ Lunes a Viernes | 10€ Sáb-Dom"
+  },
+  {
+    id: "ciudad-lineal",
+    name: "Ciudad Lineal (Caunedo)",
+    address: "Calle Caunedo, 3",
+    schedule: "12:30h a 16:00h",
+    weekdayRacionPrice: 6,
+    weekendRacionPrice: 6,
+    note: "6€ siempre (Todos los días)"
+  },
+  {
+    id: "ventas",
+    name: "Ventas (Ricardo Ortiz)",
+    address: "Calle Ricardo Ortiz, 6",
+    schedule: "12:30h a 16:00h",
+    weekdayRacionPrice: 6,
+    weekendRacionPrice: 6,
+    note: "6€ siempre (Todos los días)"
+  },
+  {
+    id: "chueca",
+    name: "Chueca",
+    address: "Calle San Marcos, 2",
+    schedule: "12:30h a 16:00h",
+    weekdayRacionPrice: 10,
+    weekendRacionPrice: 10,
+    note: "10€ / ración"
+  },
+  {
+    id: "chamberi",
+    name: "Chamberí",
+    address: "Calle Viriato, 14",
+    schedule: "12:30h a 16:00h",
+    weekdayRacionPrice: 10,
+    weekendRacionPrice: 10,
+    note: "10€ / ración"
+  },
+  {
+    id: "acacias",
+    name: "Acacias (Bodega Invictus)",
+    address: "Paseo de la Esperanza 23",
+    schedule: "12:30h a 16:00h (Sáb y Dom)",
+    weekdayRacionPrice: 10,
+    weekendRacionPrice: 10,
+    note: "10€ / ración (Sábados y Domingos)"
+  }
+];
+
+function isWeekendIsoDate(isoDateStr) {
+  if (!isoDateStr) {
+    const day = new Date().getDay();
+    return day === 0 || day === 6;
+  }
+  const parts = String(isoDateStr).split("-");
+  if (parts.length === 3) {
+    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    const day = d.getDay();
+    return day === 0 || day === 6;
+  }
+  const day = new Date().getDay();
+  return day === 0 || day === 6;
+}
+
+function getOfficialRacionPickupPrice(storeId, isoDateStr) {
+  const store = SOCARRATT_STORES.find((s) => s.id === storeId) || SOCARRATT_STORES[0];
+  const isWeekend = isWeekendIsoDate(isoDateStr);
+  return isWeekend ? store.weekendRacionPrice : store.weekdayRacionPrice;
+}

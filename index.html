@@ -47,18 +47,38 @@
 
   <!-- 3. Selector de Entrega (A domicilio vs Recoger en tienda - Permite mezclar Paellas y Raciones) -->
   <div class="delivery-toggle-container">
-    <div class="delivery-selector-card">
-      <div>
-        <strong style="display: block; font-size: 0.98rem; margin-bottom: 2px;">¿Cómo quieres recibir tu pedido?</strong>
-        <span class="delivery-info-text">Puedes pedir paellas completas, raciones en tupper o ambas cosas juntas en el mismo pedido</span>
+    <div class="delivery-selector-card" style="flex-direction: column; align-items: stretch; gap: 10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div>
+          <strong style="display: block; font-size: 0.98rem; margin-bottom: 2px;">¿Cómo quieres recibir tu pedido?</strong>
+          <span class="delivery-info-text">Puedes pedir paellas completas, raciones en tupper o ambas cosas juntas en el mismo pedido</span>
+        </div>
+        <div class="delivery-toggle-buttons">
+          <button id="btn-mode-delivery" class="delivery-type-btn active" type="button">
+            🛵 A Domicilio (Paellas envío gratis &bull; Raciones 13€)
+          </button>
+          <button id="btn-mode-pickup" class="delivery-type-btn" type="button">
+            🏢 Recoger en Tienda (Raciones 6€ / 10€ según tienda)
+          </button>
+        </div>
       </div>
-      <div class="delivery-toggle-buttons">
-        <button id="btn-mode-delivery" class="delivery-type-btn active" type="button">
-          🛵 A Domicilio (Paellas envío gratis &bull; Raciones 13€)
-        </button>
-        <button id="btn-mode-pickup" class="delivery-type-btn" type="button">
-          🏢 Recoger en Tienda (Paellas &bull; Raciones 10€)
-        </button>
+
+      <!-- Selector rápido de Tienda Socarratt cuando elige Recoger en Tienda -->
+      <div id="top-pickup-store-bar" style="display:none; background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:10px 12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <label for="top-pickup-store-select" style="font-size:0.84rem; font-weight:800; color:#9a3412;">
+            📍 Selecciona tu tienda Socarratt de recogida:
+          </label>
+          <select id="top-pickup-store-select" class="form-select" style="max-width:440px; font-weight:700;" onchange="onPickupStoreChange(this.value)">
+            <option value="malasana">📍 Malasaña (Obrador) — C/ Manuela Malasaña, 5 (Raciones 10€)</option>
+            <option value="imperial">📍 Imperial — C/ Juan Duque, 34 (Raciones 6€ L-V | 10€ S-D)</option>
+            <option value="ciudad-lineal">📍 Ciudad Lineal — C/ Caunedo, 3 (Raciones 6€ siempre)</option>
+            <option value="ventas">📍 Ventas — C/ Ricardo Ortiz, 6 (Raciones 6€ siempre)</option>
+            <option value="chueca">📍 Chueca — C/ San Marcos, 2 (Raciones 10€)</option>
+            <option value="chamberi">📍 Chamberí — C/ Viriato, 14 (Raciones 10€)</option>
+            <option value="acacias">📍 Acacias — P.º de la Esperanza 23, Bodega Invictus (Raciones 10€ S-D)</option>
+          </select>
+        </div>
       </div>
     </div>
   </div>
@@ -93,7 +113,7 @@
           <div>
             <h3>🥡 Precios por raciones en tupper</h3>
             <p style="margin-bottom:6px;">
-              El precio de la ración es de <strong>10€</strong> si la recoges en tu tienda más cercana.
+              Recogida en tienda: <strong>6€</strong> en <em>Ciudad Lineal (Caunedo)</em> y <em>Ventas (Ricardo Ortiz)</em> todos los días; <strong>6€ de Lunes a Viernes</strong> en <em>Imperial (Juan Duque)</em>; y <strong>10€</strong> en el resto de tiendas (<em>Malasaña, Chueca, Chamberí, Acacias</em>).
             </p>
             <p>
               Disponemos de servicio a domicilio propio y el coste de la ración será de <strong>13€</strong> (pedido a domicilio mínimo 2 raciones si pides solo raciones; puedes combinarlas libremente con cualquier paella).
@@ -210,8 +230,14 @@
         <div id="checkout-store-group" style="display: none;">
           <div class="form-group">
             <label class="form-label" for="pickup-store-select">Tienda Socarratt de recogida *</label>
-            <select id="pickup-store-select" class="form-select">
-              <option value="Socarratt Malasaña (Calle Manuela Malasaña, 5)">📍 Malasaña — Calle Manuela Malasaña, 5</option>
+            <select id="pickup-store-select" class="form-select" onchange="onPickupStoreChange(this.value)">
+              <option value="malasana">📍 Malasaña (Obrador Principal) — C/ Manuela Malasaña, 5 (10€/ración)</option>
+              <option value="imperial">📍 Imperial — C/ Juan Duque, 34 (6€/ración L-V | 10€ S-D)</option>
+              <option value="ciudad-lineal">📍 Ciudad Lineal — C/ Caunedo, 3 (6€/ración siempre)</option>
+              <option value="ventas">📍 Ventas — C/ Ricardo Ortiz, 6 (6€/ración siempre)</option>
+              <option value="chueca">📍 Chueca — C/ San Marcos, 2 (10€/ración)</option>
+              <option value="chamberi">📍 Chamberí — C/ Viriato, 14 (10€/ración)</option>
+              <option value="acacias">📍 Acacias — P.º de la Esperanza 23, Bodega Invictus (10€/ración S-D)</option>
             </select>
           </div>
         </div>

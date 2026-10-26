@@ -199,9 +199,9 @@
     <!-- Tarjetas de Resumen General de Caja por Método de Pago -->
     <div class="cash-summary-grid" id="cash-summary-cards"></div>
 
-    <!-- Calculadora de Efectivo (Billetes y Monedas) + Ajustes Manuales (+ / -) -->
+    <!-- Calculadora de Efectivo (Billetes y Monedas) + TPV Tienda + Ajustes Manuales (+ / -) -->
     <div class="cash-tools-grid">
-      <!-- Desglose de Efectivo en Billetes y Monedas -->
+      <!-- Desglose de Efectivo en Billetes y Monedas + TPV de Tienda -->
       <div class="cash-tool-box">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
           <h3 style="font-size:0.95rem; font-weight:800; color:#34d399;">
@@ -213,11 +213,11 @@
         <div class="bills-coins-summary-inputs">
           <div>
             <label class="form-label" style="color:#a7f3d0;">💵 Total en Billetes (€)</label>
-            <input type="number" step="0.01" id="cash-bills-direct" class="form-input" placeholder="0.00" oninput="onDirectBillsCoinsInput()">
+            <input type="number" step="0.01" id="cash-bills-direct" class="form-input" placeholder="0.00" onfocus="lastFormInteractionTs = Date.now()" oninput="onDirectBillsCoinsInput()">
           </div>
           <div>
             <label class="form-label" style="color:#fde68a;">🪙 Total en Monedas (€)</label>
-            <input type="number" step="0.01" id="cash-coins-direct" class="form-input" placeholder="0.00" oninput="onDirectBillsCoinsInput()">
+            <input type="number" step="0.01" id="cash-coins-direct" class="form-input" placeholder="0.00" onfocus="lastFormInteractionTs = Date.now()" oninput="onDirectBillsCoinsInput()">
           </div>
           <div class="cash-counted-result" id="cash-counted-diff-box">
             <span>Contado: 0.00 €</span>
@@ -231,6 +231,20 @@
           </summary>
           <div class="denominations-grid" id="denominations-container" style="margin-top:10px;"></div>
         </details>
+
+        <!-- TPV DE TIENDA (TIQUES REALIZADOS EN EL DÍA) -->
+        <div style="margin-top:12px; padding-top:12px; border-top:1px solid #334155;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div>
+              <div style="font-size:0.88rem; font-weight:800; color:#60a5fa;">📟 TPV de Tienda (Total Tiques del Día)</div>
+              <div style="font-size:0.72rem; color:#94a3b8;">Introduce el importe total que marca el cierre del TPV de tienda hoy:</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <input type="number" step="0.01" id="cash-store-tpv-input" class="form-input" style="width:130px; font-size:1rem; font-weight:900; color:#60a5fa; text-align:right;" placeholder="0.00" onfocus="lastFormInteractionTs = Date.now()" oninput="onStoreTpvInput()">
+              <span style="font-weight:900; color:#60a5fa;">€</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Movimientos Manuales de Caja (+ Extras / - Pagos sacados de Caja) -->
@@ -259,26 +273,29 @@
       </div>
     </div>
 
-    <!-- TABLA DOBLE DE REPARTIDORES: PENDIENTES DE LIQUIDAR (IZQUIERDA) ➔ LIQUIDADOS OK (DERECHA) -->
+    <!-- TABLA DOBLE DE REPARTIDORES AGRUPADA POR REPARTIDOR: PENDIENTES (IZQUIERDA) ➔ LIQUIDADOS OK (DERECHA) -->
     <div class="settlement-two-columns">
-      <!-- Lado Izquierdo: Pendientes de revisar/liquidar -->
+      <!-- Lado Izquierdo: Pendientes agrupados por repartidor -->
       <div class="settlement-column pending-col">
         <div class="settlement-col-header">
-          <span>⏳ 1. PENDIENTES DE CIERRE (Modifica Efectivo / Tarjeta / Transf / Bizum y pulsa OK)</span>
+          <span>⏳ 1. PENDIENTES DE CIERRE POR REPARTIDOR (Revisa sus cobros y pulsa OK)</span>
           <span class="settlement-badge" id="settlement-pending-count">0</span>
         </div>
         <div id="settlement-pending-body" class="settlement-list-body"></div>
       </div>
 
-      <!-- Lado Derecho: Liquidados / Cierre Correcto -->
+      <!-- Lado Derecho: Liquidados / Cierre Correcto (Desplegable por Repartidor) -->
       <div class="settlement-column settled-col">
         <div class="settlement-col-header settled-header">
-          <span>✅ 2. CIERRE CORRECTO / LIQUIDADOS (OK)</span>
+          <span>✅ 2. CIERRE CORRECTO / LIQUIDADOS POR REPARTIDOR (OK)</span>
           <span class="settlement-badge settled-badge" id="settlement-done-count">0</span>
         </div>
         <div id="settlement-done-body" class="settlement-list-body"></div>
       </div>
     </div>
+
+    <!-- CUADRO RESUMEN FINAL DE CIERRE PARA CAPTURA DE PANTALLA A LOS JEFES -->
+    <div id="boss-closing-report-container" style="margin-top: 16px;"></div>
   </section>
 
   <!-- 6. Modal para Conectar y Probar en el Móvil (QR + WhatsApp) -->
@@ -344,18 +361,18 @@
         <div class="form-row-3col">
           <div class="form-group">
             <label class="form-label">📅 Fecha *</label>
-            <input type="date" id="m-order-date" class="form-input" required>
+            <input type="date" id="m-order-date" class="form-input" onchange="onModalDateOrStoreChange()" required>
           </div>
           <div class="form-group">
             <label class="form-label">⏰ Hora Salida Cocina *</label>
             <select id="m-slot" class="form-select">
-              <option value="13:00">13:00h (Entrega ~13:30h)</option>
-              <option value="13:30">13:30h (Entrega ~14:00h)</option>
-              <option value="14:00" selected>14:00h (Entrega ~14:30h)</option>
-              <option value="14:30">14:30h (Entrega ~15:00h)</option>
-              <option value="15:00">15:00h (Entrega ~15:30h)</option>
-              <option value="15:30">15:30h (Entrega ~16:00h)</option>
-              <option value="16:00">16:00h (Última ronda)</option>
+              <option value="13:00">13:00h (🚲 13:00-13:15h | 🚗 ~13:30h)</option>
+              <option value="13:30">13:30h (🚲 13:30-13:45h | 🚗 ~14:00h)</option>
+              <option value="14:00" selected>14:00h (🚲 14:00-14:15h | 🚗 ~14:30h)</option>
+              <option value="14:30">14:30h (🚲 14:30-14:45h | 🚗 ~15:00h)</option>
+              <option value="15:00">15:00h (🚲 15:00-15:15h | 🚗 ~15:30h)</option>
+              <option value="15:30">15:30h (🚲 15:30-15:45h | 🚗 ~16:00h)</option>
+              <option value="16:00">16:00h (🚲 16:00-16:15h | 🚗 ~16:30h)</option>
             </select>
           </div>
           <div class="form-group">
@@ -367,9 +384,35 @@
           </div>
         </div>
 
-        <div class="form-group" id="m-address-group">
-          <label class="form-label">📍 Dirección de entrega en Madrid:</label>
-          <input type="text" id="m-address" class="form-input" placeholder="Ej: Calle Fuencarral 88, 3º D (o Paseo de la Castellana 120)">
+        <!-- Selector de Tienda Socarratt cuando es Recoger en Tienda (6€ vs 10€ raciones) -->
+        <div class="form-group" id="m-pickup-store-group" style="display: none;">
+          <label class="form-label">🏢 Tienda Socarratt de Recogida (Calcula automático 6€ o 10€ por ración):</label>
+          <select id="m-pickup-store" class="form-select" onchange="onModalDateOrStoreChange()">
+            <option value="malasana">📍 Malasaña (Obrador Principal) — C/ Manuela Malasaña, 5 (Raciones: 10€)</option>
+            <option value="imperial">📍 Imperial (Juan Duque) — C/ Juan Duque, 34 (Raciones: 6€ Lunes-Viernes | 10€ Sáb-Dom)</option>
+            <option value="ciudad-lineal">📍 Ciudad Lineal (Caunedo) — C/ Caunedo, 3 (Raciones: 6€ siempre)</option>
+            <option value="ventas">📍 Ventas (Ricardo Ortiz) — C/ Ricardo Ortiz, 6 (Raciones: 6€ siempre)</option>
+            <option value="chueca">📍 Chueca — C/ San Marcos, 2 (Raciones: 10€)</option>
+            <option value="chamberi">📍 Chamberí — C/ Viriato, 14 (Raciones: 10€)</option>
+            <option value="acacias">📍 Acacias (Bodega Invictus) — P.º de la Esperanza, 23 (Raciones: 10€ Sáb-Dom)</option>
+          </select>
+        </div>
+
+        <div id="m-address-group">
+          <div class="form-row-2col" style="grid-template-columns: 1.7fr 1.3fr;">
+            <div class="form-group">
+              <label class="form-label">📍 Dirección de entrega en Madrid:</label>
+              <input type="text" id="m-address" class="form-input" placeholder="Ej: Calle Fuencarral 88, 3º D">
+            </div>
+            <div class="form-group">
+              <label class="form-label">🚲 / 🚗 Margen de Entrega (Bici vs Coche):</label>
+              <select id="m-delivery-vehicle-mode" class="form-select">
+                <option value="auto" selected>⚡ Automático según cercanía</option>
+                <option value="bike">🚲 Bici de Carga (Entrega rápida +5 a 15 min, ej. 13:00-13:15h)</option>
+                <option value="car">🚗 Coche (Entrega estándar ~30 min, ej. 13:30h)</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <!-- CONSTRUCTOR DE PLATOS DE LA CARTA OFICIAL -->

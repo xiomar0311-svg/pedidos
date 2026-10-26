@@ -7,6 +7,7 @@ const state = {
   config: { ...RESTAURANT_CONFIG },
   currentCategory: "all",
   deliveryType: "delivery", // 'delivery' (a domicilio) o 'pickup' (recoger en tienda)
+  selectedStoreId: "malasana",
   cart: [],
   selectedDate: "today",
   selectedTimeSlot: "14:00"
@@ -48,8 +49,50 @@ function isHomeDelivery() {
   return state.deliveryType === "delivery";
 }
 
+function getSelectedOrderIsoDate() {
+  const getIsoOffset = (offsetDays) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  if (state.selectedDate === "tomorrow") return getIsoOffset(1);
+  if (state.selectedDate === "custom") {
+    const customDateInput = document.getElementById("custom-date-val");
+    if (customDateInput && customDateInput.value) return customDateInput.value;
+  }
+  return getIsoOffset(0);
+}
+
 function getPortionUnitPrice() {
-  return isHomeDelivery() ? 13.0 : 10.0;
+  if (isHomeDelivery()) return 13.0;
+  if (typeof getOfficialRacionPickupPrice === "function") {
+    return getOfficialRacionPickupPrice(state.selectedStoreId, getSelectedOrderIsoDate());
+  }
+  return 10.0;
+}
+
+function onPickupStoreChange(storeId) {
+  state.selectedStoreId = storeId || "malasana";
+  const topSel = document.getElementById("top-pickup-store-select");
+  const chkSel = document.getElementById("pickup-store-select");
+  if (topSel && topSel.value !== state.selectedStoreId) topSel.value = state.selectedStoreId;
+  if (chkSel && chkSel.value !== state.selectedStoreId) chkSel.value = state.selectedStoreId;
+  refreshCartPortionPricesAndUI();
+}
+
+function refreshCartPortionPricesAndUI() {
+  const newPortionPrice = getPortionUnitPrice();
+  state.cart.forEach((item) => {
+    if (item.type === "portion") {
+      item.unitPrice = newPortionPrice;
+    }
+  });
+  renderProducts();
+  renderCart();
+  const chkModal = document.getElementById("checkout-modal");
+  if (chkModal && chkModal.classList.contains("active")) {
+    renderCheckoutBreakdown();
+  }
 }
 
 function calcItemWholePrice(item, people) {
@@ -98,25 +141,15 @@ function setGlobalDeliveryMode(mode) {
   if (chkDel) chkDel.classList.toggle("active", state.deliveryType === "delivery");
   if (chkPick) chkPick.classList.toggle("active", state.deliveryType === "pickup");
 
+  const topStoreBar = document.getElementById("top-pickup-store-bar");
+  if (topStoreBar) topStoreBar.style.display = !isHomeDelivery() ? "block" : "none";
+
   const addressSection = document.getElementById("checkout-address-group");
   const storeSection = document.getElementById("checkout-store-group");
   if (addressSection) addressSection.style.display = isHomeDelivery() ? "block" : "none";
   if (storeSection) storeSection.style.display = !isHomeDelivery() ? "block" : "none";
 
-  // Actualizar precio unitario de las raciones en el carrito (13€ domicilio / 10€ tienda)
-  const newPortionPrice = getPortionUnitPrice();
-  state.cart.forEach((item) => {
-    if (item.type === "portion") {
-      item.unitPrice = newPortionPrice;
-    }
-  });
-
-  renderProducts();
-  renderCart();
-  const chkModal = document.getElementById("checkout-modal");
-  if (chkModal && chkModal.classList.contains("active")) {
-    renderCheckoutBreakdown();
-  }
+  refreshCartPortionPricesAndUI();
 }
 
 function renderCategoryTabs() {
@@ -666,8 +699,14 @@ function setupEventListeners() {
       if (customDatePicker) {
         customDatePicker.style.display = btn.dataset.date === "custom" ? "block" : "none";
       }
+      refreshCartPortionPricesAndUI();
     });
   });
+
+  const customDateVal = document.getElementById("custom-date-val");
+  if (customDateVal) {
+    customDateVal.addEventListener("change", () => refreshCartPortionPricesAndUI());
+  }
 }
 
 function renderCheckoutBreakdown() {
@@ -782,10 +821,20 @@ function handleWhatsAppSubmit() {
   message += `⏰ *Hora:* ${state.selectedTimeSlot}h\n`;
   message += `🚚 *Modalidad:* ${isHomeDelivery() ? "🛵 Entrega a domicilio" : "🏢 Recogida en tienda"}\n`;
 
+  const chosenStoreObj =
+    typeof SOCARRATT_STORES !== "undefined"
+      ? SOCARRATT_STORES.find((s) => s.id === (storeSelect ? storeSelect.value : state.selectedStoreId)) || SOCARRATT_STORES[0]
+      : null;
+  const chosenStoreLabel = chosenStoreObj
+    ? `${chosenStoreObj.name} (${chosenStoreObj.address})`
+    : storeSelect
+    ? storeSelect.value
+    : "Malasaña (Calle Manuela Malasaña, 5)";
+
   if (isHomeDelivery()) {
     message += `📍 *Dirección:* ${addressStreet.value.trim()}${addressCity && addressCity.value.trim() ? ", " + addressCity.value.trim() : ""}\n`;
   } else {
-    message += `📍 *Tienda:* ${storeSelect ? storeSelect.value : "Calle Manuela Malasaña, 5"}\n`;
+    message += `📍 *Tienda:* ${chosenStoreLabel}\n`;
   }
 
   message += `\n📋 *PEDIDO:*\n`;
@@ -816,7 +865,7 @@ function handleWhatsAppSubmit() {
   try {
     const isPickup = !isHomeDelivery();
     const fullAddress = isPickup
-      ? "Recoge en Obrador (Manuela Malasaña 5)"
+      ? `Recoge en ${chosenStoreLabel}`
       : `${addressStreet.value.trim()}${addressCity && addressCity.value.trim() ? ", " + addressCity.value.trim() : ""}`;
 
     const bikeKeywords = [

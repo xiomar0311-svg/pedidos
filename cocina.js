@@ -496,11 +496,25 @@ function formatClockTime(timestampMs) {
 
 function getOrderTelemetry(order) {
   const est = estimateMadridRoute(order.address, order.type === "pickup");
-  const outboundBudget = order.outboundMinutes || est.outboundMinutes || 25;
-  const returnBudget = order.returnMinutes || est.returnMinutes || 15;
+  const assignedRider = kdsState.riders.find((r) => r.id === order.riderId);
+  const isBike =
+    order.type !== "pickup" &&
+    (order.vehicle === "bike" || (assignedRider && assignedRider.vehicle === "bike"));
+
+  const rawOutbound = order.outboundMinutes || est.outboundMinutes || (isBike ? 12 : 25);
+  const outboundBudget = isBike ? Math.min(15, Math.max(5, rawOutbound)) : rawOutbound;
+  const returnBudget = isBike
+    ? Math.min(12, Math.max(5, order.returnMinutes || est.returnMinutes || 10))
+    : order.returnMinutes || est.returnMinutes || 15;
   const distanceKm = order.distanceKm !== undefined ? order.distanceKm : est.distanceKm;
-  const deliveryTargetSlot = addMinutesToSlot(order.slot, 30);
-  const nextRoundSlot = addMinutesToSlot(order.slot, 60);
+
+  // Para bicis de carga (5-15 min): sale a las 13:00 y se entrega entre las 13:00 y 13:15h
+  const deliveryTargetSlot = isBike
+    ? `${order.slot}-${addMinutesToSlot(order.slot, 15)}`
+    : addMinutesToSlot(order.slot, 30);
+  const nextRoundSlot = isBike
+    ? addMinutesToSlot(order.slot, 30)
+    : addMinutesToSlot(order.slot, 60);
 
   const now = Date.now();
   let outboundElapsedMin = 0;
@@ -1570,8 +1584,42 @@ function focusRiderOnMap(riderId) {
 }
 
 // ============================================================================
-// TABLÓN DE COMANDAS POR FRANJAS DE 30 MIN (NOMBRES LIMPIOS + PRECIOS EDITABLES)
+// TABLÓN DE COMANDAS POR FRANJAS DE 30 MIN (RESUMEN DE FUEGOS + DESPLIEGUE INDIVIDUAL + BICI 5-15 MIN)
 // ============================================================================
+const MAX_BURNERS_PER_SLOT = 15;
+
+function countOrderPaellasAndRaciones(order) {
+  let paellas = 0;
+  let raciones = 0;
+  (order.items || []).forEach((item) => {
+    const lbl = formatCleanItemLabel(item);
+    const racMatch = lbl.match(/^(\d+)x\s+Raci/i);
+    if (racMatch) {
+      raciones += Number(racMatch[1]) || 1;
+    } else if (!item.isVarios && !lbl.toLowerCase().startsWith("varios:")) {
+      paellas += 1;
+    }
+  });
+  return { paellas, raciones };
+}
+
+function toggleOrderVehicleMode(orderId, event) {
+  if (event) event.stopPropagation();
+  const order = kdsState.orders.find((o) => o.id === orderId);
+  if (!order || order.type === "pickup") return;
+
+  order.vehicle = order.vehicle === "bike" ? "car" : "bike";
+  if (order.vehicle === "bike") {
+    order.outboundMinutes = Math.min(15, Math.max(5, order.outboundMinutes || 12));
+    order.returnMinutes = Math.min(12, Math.max(5, order.returnMinutes || 10));
+  } else {
+    order.outboundMinutes = Math.max(20, order.outboundMinutes || 28);
+    order.returnMinutes = Math.max(15, order.returnMinutes || 18);
+  }
+  saveKdsOrders();
+  renderAllKds();
+}
+
 function renderKdsBoard() {
   const container = document.getElementById("kds-slots-grid");
   if (!container) return;
@@ -1583,15 +1631,9 @@ function renderKdsBoard() {
 
   orders.forEach((o) => {
     if (o.status !== "delivered") {
-      (o.items || []).forEach((item) => {
-        const lbl = formatCleanItemLabel(item);
-        const racMatch = lbl.match(/^(\d+)x\s+Raci/i);
-        if (racMatch) {
-          totalRaciones += Number(racMatch[1]) || 1;
-        } else if (!item.isVarios && !lbl.toLowerCase().startsWith("varios:")) {
-          totalPaellasGrandes++;
-        }
-      });
+      const counts = countOrderPaellasAndRaciones(o);
+      totalPaellasGrandes += counts.paellas;
+      totalRaciones += counts.raciones;
     }
   });
 
@@ -1602,28 +1644,71 @@ function renderKdsBoard() {
 
   container.innerHTML = KITCHEN_SLOTS.map((slot) => {
     const slotOrders = orders.filter((o) => o.slot === slot);
-    const deliveryClientSlot = addMinutesToSlot(slot, 30);
-    const returnNextSlot = addMinutesToSlot(slot, 60);
+    const bikeWindowEnd = addMinutesToSlot(slot, 15);
+    const carDeliverySlot = addMinutesToSlot(slot, 30);
+
+    let slotPaellas = 0;
+    let slotRaciones = 0;
+    slotOrders.forEach((o) => {
+      const c = countOrderPaellasAndRaciones(o);
+      slotPaellas += c.paellas;
+      slotRaciones += c.raciones;
+    });
+
+    const burnerPct = Math.min(100, Math.round((slotPaellas / MAX_BURNERS_PER_SLOT) * 100));
+    const burnerColor =
+      slotPaellas >= MAX_BURNERS_PER_SLOT
+        ? "#ef4444"
+        : slotPaellas >= 11
+        ? "#f59e0b"
+        : "#10b981";
+    const burnerBg =
+      slotPaellas >= MAX_BURNERS_PER_SLOT
+        ? "rgba(239, 68, 68, 0.18)"
+        : slotPaellas >= 11
+        ? "rgba(245, 158, 11, 0.16)"
+        : "rgba(16, 185, 129, 0.14)";
 
     return `
       <div class="slot-column" data-slot="${slot}">
         <div class="slot-header">
           <div class="slot-header-top">
             <div class="slot-time">
-              <span>🔥 Sale Cocina: ${slot}h</span>
+              <span>🔥 ${slot}h</span>
             </div>
-            <span class="slot-badge">${slotOrders.length} ${slotOrders.length === 1 ? "pedido" : "pedidos"}</span>
+            <div style="display:flex; gap:5px; align-items:center;">
+              <span class="slot-badge" style="background:#1e293b; color:#f8fafc; border:1px solid #475569;">
+                📋 ${slotOrders.length} ${slotOrders.length === 1 ? "pedido" : "pedidos"}
+              </span>
+              <span class="slot-badge" style="background:${burnerBg}; color:${burnerColor}; border:1px solid ${burnerColor}; font-weight:900;">
+                🥘 ${slotPaellas}/${MAX_BURNERS_PER_SLOT} paellas
+              </span>
+            </div>
           </div>
 
-          <div class="slot-cycle-explain">
-            <span>🛵 Entrega: <strong>~${deliveryClientSlot}h</strong></span>
-            <span>🔄 Vuelve: <strong>${returnNextSlot}h</strong></span>
+          <!-- Barra de capacidad de fuegos (Máx 15 fuegos cada 30 min) -->
+          <div style="margin-top:6px; background:#090d16; border:1px solid #1e293b; border-radius:8px; padding:5px 8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; font-weight:800; margin-bottom:4px;">
+              <span style="color:${burnerColor};">
+                🔥 Fuegos ocupados: <strong>${slotPaellas} de ${MAX_BURNERS_PER_SLOT}</strong>
+                ${slotPaellas >= MAX_BURNERS_PER_SLOT ? " 🚨 ¡COMPLETO!" : ` (Libres: ${MAX_BURNERS_PER_SLOT - slotPaellas})`}
+              </span>
+              ${slotRaciones > 0 ? `<span style="color:#38bdf8;">🥡 +${slotRaciones} rac.</span>` : ""}
+            </div>
+            <div style="height:5px; width:100%; background:#1e293b; border-radius:999px; overflow:hidden;">
+              <div style="height:100%; width:${burnerPct}%; background:${burnerColor}; transition:width 0.25s;"></div>
+            </div>
+          </div>
+
+          <div class="slot-cycle-explain" style="margin-top:6px;">
+            <span title="Las bicis de carga tardan 5 a 15 min">🚲 Bici: <strong>${slot}-${bikeWindowEnd}h</strong></span>
+            <span title="Los coches tardan ~30 min">🚗 Coche: <strong>~${carDeliverySlot}h</strong></span>
           </div>
         </div>
 
         <div class="slot-orders-list">
           ${slotOrders.length === 0 ? `
-            <div class="slot-empty">Sin pedidos a las ${slot}h</div>
+            <div class="slot-empty">Sin pedidos a las ${slot}h (15 fuegos libres)</div>
           ` : slotOrders.map(renderTicketCard).join("")}
         </div>
       </div>
@@ -1641,13 +1726,25 @@ function renderTicketCard(order) {
     .map((i) => formatCleanItemLabel(i))
     .join(" + ");
 
-  const vIconCompact = order.type === "pickup" ? "🏢" : order.vehicle === "bike" ? "🚲" : "🚗";
   const assignedRiderObj = kdsState.riders.find((r) => r.id === order.riderId);
+  const isBikeOrder =
+    order.type !== "pickup" &&
+    (order.vehicle === "bike" || (assignedRiderObj && assignedRiderObj.vehicle === "bike"));
+
+  const vIconCompact = order.type === "pickup" ? "🏢" : isBikeOrder ? "🚲" : "🚗";
   const riderShortName = assignedRiderObj
-    ? `🛵 ${assignedRiderObj.name.split(" ")[0]}`
+    ? `${isBikeOrder ? "🚲" : "🚗"} ${assignedRiderObj.name.split(" ")[0]}`
     : order.type === "pickup"
-    ? "🏢 Recoge en local"
+    ? "🏢 Recoge en tienda"
     : "⚠️ Sin repartidor";
+
+  // Ventana de entrega clara según si es Bici (5-15 min: ej. 13:00-13:15h) o Coche (~30 min: ej. ~13:30h)
+  const deliveryWindowBadge =
+    order.type === "pickup"
+      ? `<span style="color:#a855f7; font-weight:800; font-size:0.71rem;">🏢 Recoge ${order.slot}h</span>`
+      : isBikeOrder
+      ? `<span onclick="toggleOrderVehicleMode('${order.id}', event)" title="Pulsa para cambiar entre Bici (5-15 min) y Coche (~30 min)" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.4); padding:1px 6px; border-radius:6px; font-weight:800; font-size:0.7rem; cursor:pointer;">🚲 Entrega ${order.slot}-${addMinutesToSlot(order.slot, 15)}h</span>`
+      : `<span onclick="toggleOrderVehicleMode('${order.id}', event)" title="Pulsa para cambiar entre Coche (~30 min) y Bici (5-15 min)" style="background:rgba(245,158,11,0.15); color:#fbbf24; border:1px solid rgba(245,158,11,0.4); padding:1px 6px; border-radius:6px; font-weight:800; font-size:0.7rem; cursor:pointer;">🚗 Entrega ~${addMinutesToSlot(order.slot, 30)}h</span>`;
 
   let riderControlHtml = "";
   if (order.type !== "pickup" && order.vehicle !== "pickup") {
@@ -1660,9 +1757,11 @@ function renderTicketCard(order) {
 
     riderControlHtml = `
       <div class="ticket-rider-box" onclick="event.stopPropagation()">
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.73rem; font-weight:800; color:#cbd5e1; margin-bottom:4px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.73rem; font-weight:800; color:#cbd5e1; margin-bottom:5px; flex-wrap:wrap; gap:4px;">
           <span>🛵 Asignar Repartidor:</span>
-          ${order.settled ? `<span style="color:#34d399;">✅ Liquidado en Caja</span>` : ""}
+          <button type="button" class="btn-mini" style="padding:2px 7px; font-size:0.68rem;" onclick="toggleOrderVehicleMode('${order.id}', event)">
+            ${isBikeOrder ? "🚲 Modo Bici (13:00-13:15h) ➔ Cambiar a Coche" : "🚗 Modo Coche (~30 min) ➔ Cambiar a Bici"}
+          </button>
         </div>
 
         <select class="ticket-rider-select" onfocus="lastFormInteractionTs = Date.now()" onmousedown="lastFormInteractionTs = Date.now()" onchange="assignRiderToOrder('${order.id}', this.value)">
@@ -1701,16 +1800,17 @@ function renderTicketCard(order) {
         </div>
 
         <div class="compact-bottom-bar" onclick="event.stopPropagation()">
-          <div style="display:flex; align-items:center; gap:6px; font-size:0.74rem; color:#cbd5e1; font-weight:700;">
+          <div style="display:flex; align-items:center; gap:6px; font-size:0.73rem; color:#cbd5e1; font-weight:700; flex-wrap:wrap;">
             <span>${riderShortName}</span>
+            ${deliveryWindowBadge}
           </div>
 
           <div style="display:flex; align-items:center; gap:5px;">
             <button class="ticket-status-btn ${currentSt.class}" style="padding:4px 8px; font-size:0.72rem;" onclick="cycleOrderStatus('${order.id}')">
               ${currentSt.label}
             </button>
-            <button type="button" class="btn-collapse-toggle" onclick="toggleTicketCollapse('${order.id}', event)">
-              ${isCollapsed ? "▼ Más" : "▲ Plegar"}
+            <button type="button" class="btn-collapse-toggle" onclick="toggleTicketCollapse('${order.id}', event)" title="Desplegar o plegar este pedido individualmente">
+              ${isCollapsed ? "🔽 Desplegar" : "🔼 Plegar"}
             </button>
           </div>
         </div>
@@ -1785,15 +1885,33 @@ function promptEditOrderPrice(orderId, event) {
 }
 
 // ============================================================================
-// CONSTRUCTOR DE PEDIDOS CON CARTA OFICIAL + APARTADO DE VARIOS
+// CONSTRUCTOR DE PEDIDOS CON CARTA OFICIAL + TIENDAS (6€/10€) + VARIOS
 // ============================================================================
 let draftOrderItems = [];
 let isTotalManuallyOverridden = false;
 
+function getActiveModalRacionUnitPrice() {
+  const delivType = document.getElementById("m-type")?.value || "delivery_whole";
+  if (delivType !== "pickup") return 13;
+
+  const storeId = document.getElementById("m-pickup-store")?.value || "malasana";
+  const orderDate = document.getElementById("m-order-date")?.value || getIsoDateOffset(0);
+  if (typeof getOfficialRacionPickupPrice === "function") {
+    return getOfficialRacionPickupPrice(storeId, orderDate);
+  }
+  if (storeId === "ciudad-lineal" || storeId === "ventas") return 6;
+  if (storeId === "imperial") {
+    const parts = String(orderDate).split("-");
+    const d = parts.length === 3 ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])) : new Date();
+    const day = d.getDay();
+    return day === 0 || day === 6 ? 10 : 6;
+  }
+  return 10;
+}
+
 function getBuilderCalculatedPrice() {
   const rice = document.getElementById("m-rice")?.value || "Paella Valenciana";
   const format = document.getElementById("m-format")?.value || "6px";
-  const delivType = document.getElementById("m-type")?.value || "delivery_whole";
 
   if (format.endsWith("px")) {
     const px = parseInt(format, 10) || 6;
@@ -1804,7 +1922,7 @@ function getBuilderCalculatedPrice() {
     return (isSpecial ? 121 : 115) + Math.max(0, px - 6) * (isSpecial ? 16 : 15);
   } else {
     const qty = parseInt(format, 10) || 1;
-    const unit = delivType === "pickup" ? 10 : 13;
+    const unit = getActiveModalRacionUnitPrice();
     return qty * unit;
   }
 }
@@ -1816,13 +1934,40 @@ function updateBuilderItemPreviewPrice() {
   }
 }
 
+function recalculateDraftRacionesPrices() {
+  const unit = getActiveModalRacionUnitPrice();
+  let changed = false;
+  draftOrderItems.forEach((it) => {
+    const racMatch = String(it.name || "").match(/^(\d+)x\s+Raci/i);
+    if (racMatch) {
+      const qty = Number(racMatch[1]) || 1;
+      it.price = qty * unit;
+      changed = true;
+    }
+  });
+  if (changed) {
+    isTotalManuallyOverridden = false;
+    renderDraftOrderItems();
+  }
+}
+
+function onModalDateOrStoreChange() {
+  updateBuilderItemPreviewPrice();
+  recalculateDraftRacionesPrices();
+}
+
 function onModalDeliveryTypeChange() {
   const typeVal = document.getElementById("m-type")?.value || "delivery_whole";
   const addrGroup = document.getElementById("m-address-group");
+  const storeGroup = document.getElementById("m-pickup-store-group");
   if (addrGroup) {
     addrGroup.style.display = typeVal === "pickup" ? "none" : "block";
   }
+  if (storeGroup) {
+    storeGroup.style.display = typeVal === "pickup" ? "block" : "none";
+  }
   updateBuilderItemPreviewPrice();
+  recalculateDraftRacionesPrices();
 }
 
 function addDishToDraftOrder() {
@@ -1958,6 +2103,10 @@ function openManualOrderModal() {
   document.getElementById("m-order-date").value = defaultDate;
   document.getElementById("m-type").value = "delivery_whole";
   document.getElementById("m-address-group").style.display = "block";
+  const storeGroup = document.getElementById("m-pickup-store-group");
+  if (storeGroup) storeGroup.style.display = "none";
+  const vehModeEl = document.getElementById("m-delivery-vehicle-mode");
+  if (vehModeEl) vehModeEl.value = "auto";
 
   draftOrderItems = [];
   isTotalManuallyOverridden = false;
@@ -1979,6 +2128,16 @@ function openEditOrderModal(orderId) {
   document.getElementById("m-slot").value = order.slot;
   document.getElementById("m-type").value = order.type === "pickup" ? "pickup" : "delivery_whole";
   document.getElementById("m-address-group").style.display = order.type === "pickup" ? "none" : "block";
+  const storeGroup = document.getElementById("m-pickup-store-group");
+  if (storeGroup) storeGroup.style.display = order.type === "pickup" ? "block" : "none";
+  const storeSel = document.getElementById("m-pickup-store");
+  if (storeSel && order.pickupStoreId) storeSel.value = order.pickupStoreId;
+
+  const vehModeEl = document.getElementById("m-delivery-vehicle-mode");
+  if (vehModeEl) {
+    vehModeEl.value = order.vehicle === "bike" ? "bike" : order.vehicle === "car" ? "car" : "auto";
+  }
+
   document.getElementById("m-address").value = order.type === "pickup" ? "" : order.address;
   document.getElementById("m-notes").value = order.notes || "";
   document.getElementById("m-varios-concept").value = "";
@@ -2013,7 +2172,9 @@ function saveManualPhoneOrder() {
   const orderDate = document.getElementById("m-order-date").value || getIsoDateOffset(0);
   const slot = document.getElementById("m-slot").value;
   const type = document.getElementById("m-type").value;
-  const address = document.getElementById("m-address").value.trim() || "Recoge en Obrador (Manuela Malasaña 5)";
+  const storeId = document.getElementById("m-pickup-store")?.value || "malasana";
+  const vehMode = document.getElementById("m-delivery-vehicle-mode")?.value || "auto";
+  const rawAddress = document.getElementById("m-address").value.trim();
   const notes = document.getElementById("m-notes").value.trim();
   const payMethod = document.getElementById("m-payment-method")?.value || "cash";
 
@@ -2027,7 +2188,6 @@ function saveManualPhoneOrder() {
   const pendingVariosAmt = parseFloat(String(document.getElementById("m-varios-amount")?.value || "").replace(",", "."));
 
   if (draftOrderItems.length === 0) {
-    // Si no pulsó "➕ Añadir Plato", añadimos el plato seleccionado actualmente en los selectores
     addDishToDraftOrder();
   }
 
@@ -2051,7 +2211,32 @@ function saveManualPhoneOrder() {
     : draftOrderItems.reduce((s, i) => s + (Number(i.price) || 0), 0);
 
   const isPickup = type === "pickup";
+  const storeObj =
+    typeof SOCARRATT_STORES !== "undefined"
+      ? SOCARRATT_STORES.find((s) => s.id === storeId) || SOCARRATT_STORES[0]
+      : null;
+  const pickupAddressText = storeObj
+    ? `Recoge en ${storeObj.name} (${storeObj.address})`
+    : "Recoge en Obrador (Manuela Malasaña 5)";
+
+  const address = isPickup ? pickupAddressText : rawAddress || "Domicilio Madrid";
   const routeEst = estimateMadridRoute(address, isPickup);
+
+  let finalVehicle = isPickup ? "pickup" : routeEst.vehicle;
+  let finalOutbound = routeEst.outboundMinutes;
+  let finalReturn = routeEst.returnMinutes;
+
+  if (!isPickup) {
+    if (vehMode === "bike") {
+      finalVehicle = "bike";
+      finalOutbound = Math.min(15, Math.max(5, routeEst.outboundMinutes || 12));
+      finalReturn = Math.min(12, Math.max(5, routeEst.returnMinutes || 10));
+    } else if (vehMode === "car") {
+      finalVehicle = "car";
+      finalOutbound = Math.max(22, routeEst.outboundMinutes || 28);
+      finalReturn = Math.max(15, routeEst.returnMinutes || 18);
+    }
+  }
 
   const initialSplit = { cash: 0, card: 0, transfer: 0, bizum: 0 };
   initialSplit[payMethod] = finalTotal;
@@ -2064,13 +2249,14 @@ function saveManualPhoneOrder() {
       existing.date = orderDate;
       existing.slot = slot;
       existing.type = type;
-      existing.vehicle = isPickup ? "pickup" : existing.riderId ? existing.vehicle : routeEst.vehicle;
-      existing.address = isPickup ? "Recoge en Obrador (Manuela Malasaña 5)" : address;
+      existing.pickupStoreId = isPickup ? storeId : "";
+      existing.vehicle = isPickup ? "pickup" : vehMode !== "auto" ? finalVehicle : existing.riderId ? existing.vehicle : finalVehicle;
+      existing.address = address;
       existing.lat = routeEst.lat;
       existing.lng = routeEst.lng;
       existing.distanceKm = routeEst.distanceKm;
-      existing.outboundMinutes = routeEst.outboundMinutes;
-      existing.returnMinutes = routeEst.returnMinutes;
+      existing.outboundMinutes = finalOutbound;
+      existing.returnMinutes = finalReturn;
       existing.items = draftOrderItems.map((it) => ({ ...it }));
       existing.notes = notes;
       existing.total = finalTotal;
@@ -2089,14 +2275,15 @@ function saveManualPhoneOrder() {
       slot: slot,
       date: orderDate,
       type: type,
-      vehicle: routeEst.vehicle,
+      pickupStoreId: isPickup ? storeId : "",
+      vehicle: finalVehicle,
       riderId: "",
-      address: isPickup ? "Recoge en Obrador (Manuela Malasaña 5)" : address,
+      address: address,
       lat: routeEst.lat,
       lng: routeEst.lng,
       distanceKm: routeEst.distanceKm,
-      outboundMinutes: routeEst.outboundMinutes,
-      returnMinutes: routeEst.returnMinutes,
+      outboundMinutes: finalOutbound,
+      returnMinutes: finalReturn,
       items: draftOrderItems.map((it) => ({ ...it })),
       notes: notes,
       total: finalTotal,
@@ -2118,6 +2305,31 @@ function saveManualPhoneOrder() {
 // ============================================================================
 const BILL_DENOMS = [500, 200, 100, 50, 20, 10, 5];
 const COIN_DENOMS = [2, 1, 0.5, 0.2, 0.1, 0.05];
+
+function getActiveCashDateKey() {
+  return kdsState.selectedFilterDate === "all" ? getIsoDateOffset(0) : kdsState.selectedFilterDate;
+}
+
+function getStoreTpvForActiveDate() {
+  const dateKey = getActiveCashDateKey();
+  if (kdsState.cashBreakdown?.tpvByDate && kdsState.cashBreakdown.tpvByDate[dateKey] !== undefined) {
+    return Number(kdsState.cashBreakdown.tpvByDate[dateKey]) || 0;
+  }
+  return Number(kdsState.cashBreakdown?.storeTpv) || 0;
+}
+
+function onStoreTpvInput() {
+  lastFormInteractionTs = Date.now();
+  const rawVal = document.getElementById("cash-store-tpv-input")?.value || "";
+  const val = Math.max(0, Math.round((parseFloat(String(rawVal).replace(",", ".")) || 0) * 100) / 100);
+  const dateKey = getActiveCashDateKey();
+  if (!kdsState.cashBreakdown.tpvByDate) kdsState.cashBreakdown.tpvByDate = {};
+  kdsState.cashBreakdown.tpvByDate[dateKey] = val;
+  kdsState.cashBreakdown.storeTpv = val;
+  saveCashData();
+  renderCashSummaryTotalsOnly();
+  renderBossClosingReport();
+}
 
 function initDenominationsCounterUI() {
   const container = document.getElementById("denominations-container");
@@ -2146,6 +2358,11 @@ function initDenominationsCounterUI() {
   if (coinsInput && kdsState.cashBreakdown.coinsDirect) {
     coinsInput.value = Number(kdsState.cashBreakdown.coinsDirect).toFixed(2);
   }
+  const tpvInput = document.getElementById("cash-store-tpv-input");
+  const tpvVal = getStoreTpvForActiveDate();
+  if (tpvInput) {
+    tpvInput.value = tpvVal > 0 ? tpvVal.toFixed(2) : "";
+  }
 }
 
 function onDenomCountChange(denomKey, rawCount) {
@@ -2171,19 +2388,24 @@ function onDenomCountChange(denomKey, rawCount) {
 
   saveCashData();
   renderCashSummaryTotalsOnly();
+  renderBossClosingReport();
 }
 
 function onDirectBillsCoinsInput() {
+  lastFormInteractionTs = Date.now();
   const billsVal = parseFloat(document.getElementById("cash-bills-direct")?.value) || 0;
   const coinsVal = parseFloat(document.getElementById("cash-coins-direct")?.value) || 0;
   kdsState.cashBreakdown.billsDirect = Math.round(billsVal * 100) / 100;
   kdsState.cashBreakdown.coinsDirect = Math.round(coinsVal * 100) / 100;
   saveCashData();
   renderCashSummaryTotalsOnly();
+  renderBossClosingReport();
 }
 
 function resetCashBreakdown() {
-  kdsState.cashBreakdown = { billsDirect: 0, coinsDirect: 0, denominations: {} };
+  const tpvByDate = kdsState.cashBreakdown?.tpvByDate || {};
+  const storeTpv = kdsState.cashBreakdown?.storeTpv || 0;
+  kdsState.cashBreakdown = { billsDirect: 0, coinsDirect: 0, denominations: {}, tpvByDate, storeTpv };
   const billsInput = document.getElementById("cash-bills-direct");
   const coinsInput = document.getElementById("cash-coins-direct");
   if (billsInput) billsInput.value = "";
@@ -2191,6 +2413,7 @@ function resetCashBreakdown() {
   initDenominationsCounterUI();
   saveCashData();
   renderCashSummaryTotalsOnly();
+  renderBossClosingReport();
 }
 
 function openManualAdjustmentModal() {
@@ -2213,7 +2436,7 @@ function addCashManualMovement() {
     return;
   }
 
-  const activeDate = kdsState.selectedFilterDate === "all" ? getIsoDateOffset(0) : kdsState.selectedFilterDate;
+  const activeDate = getActiveCashDateKey();
   kdsState.cashAdjustments.unshift({
     id: "adj-" + Date.now(),
     date: activeDate,
@@ -2250,6 +2473,7 @@ function setOrderFullPaymentMethod(orderId, method) {
 
 // Edita uno de los 4 importes parciales (ej. 100€ en efectivo y 15€ en tarjeta)
 function onOrderSplitInputChange(orderId, field, rawVal) {
+  lastFormInteractionTs = Date.now();
   const order = kdsState.orders.find((o) => o.id === orderId);
   if (!order) return;
   ensureOrderPaymentSplit(order);
@@ -2260,6 +2484,7 @@ function onOrderSplitInputChange(orderId, field, rawVal) {
   saveKdsOrders();
   renderCashSummaryTotalsOnly();
   updateOrderSplitStatusUI(orderId);
+  renderBossClosingReport();
 }
 
 // Asigna automáticamente la diferencia restante de un pago mixto al método elegido (ej. "Poner resto 15€ en Tarjeta")
@@ -2280,6 +2505,7 @@ function assignRemainderToMethod(orderId, targetMethod) {
 }
 
 function updateOrderTotalFromSettlement(orderId, rawVal) {
+  lastFormInteractionTs = Date.now();
   const order = kdsState.orders.find((o) => o.id === orderId);
   if (!order) return;
   const newTotal = Math.max(0, Math.round((parseFloat(String(rawVal).replace(",", ".")) || 0) * 100) / 100);
@@ -2301,6 +2527,7 @@ function updateOrderTotalFromSettlement(orderId, rawVal) {
   renderKdsBoard();
   renderCashSummaryTotalsOnly();
   updateOrderSplitStatusUI(orderId);
+  renderBossClosingReport();
 }
 
 function updateOrderSplitStatusUI(orderId) {
@@ -2329,7 +2556,22 @@ function updateOrderSplitStatusUI(orderId) {
   }
 }
 
-// Pasa un pedido al otro lado de la tabla (Liquidados / Cierre Correcto) o lo reabre
+function getOrderGroupKey(order) {
+  if (order.riderId) return order.riderId;
+  if (order.type === "pickup" || order.vehicle === "pickup") return "__PICKUP__";
+  return "__UNASSIGNED__";
+}
+
+function getOrderGroupLabel(groupKey) {
+  if (groupKey === "__PICKUP__") return "🏢 Recogida en Tienda";
+  if (groupKey === "__UNASSIGNED__") return "⚠️ Sin Repartidor Asignado";
+  const rObj = kdsState.riders.find((r) => r.id === groupKey);
+  if (!rObj) return "🛵 Repartidor";
+  const vEmoji = rObj.vehicle === "bike" ? "🚲" : rObj.vehicle === "moto" ? "🛵" : "🚗";
+  return `${vEmoji} ${rObj.name}`;
+}
+
+// Pasa un pedido individual al otro lado de la tabla (Liquidados / Cierre Correcto) o lo reabre
 function toggleOrderSettledOk(orderId, settledVal) {
   const order = kdsState.orders.find((o) => o.id === orderId);
   if (!order) return;
@@ -2339,12 +2581,22 @@ function toggleOrderSettledOk(orderId, settledVal) {
   renderAllKds();
 }
 
-// Marca como OK todos los pedidos pendientes de un repartidor de golpe
-function settleAllRiderOrders(riderId) {
-  const orders = getFilteredOrders().filter((o) => (o.riderId || "") === riderId && !o.settled);
+// Marca como OK (Cierre Correcto) TODOS los pedidos de un repartidor y pasa su resumen desplegable al lado derecho
+function settleAllRiderOrders(groupKey) {
+  const orders = getFilteredOrders().filter((o) => getOrderGroupKey(o) === groupKey && !o.settled);
   orders.forEach((o) => {
     ensureOrderPaymentSplit(o);
     o.settled = true;
+  });
+  saveKdsOrders();
+  renderAllKds();
+}
+
+// Reabre todos los pedidos liquidados de un repartidor para devolverlos al lado izquierdo
+function unSettleAllRiderOrders(groupKey) {
+  const orders = getFilteredOrders().filter((o) => getOrderGroupKey(o) === groupKey && o.settled);
+  orders.forEach((o) => {
+    o.settled = false;
   });
   saveKdsOrders();
   renderAllKds();
@@ -2360,6 +2612,7 @@ function getFilteredAdjustments() {
 function renderCashSummaryTotalsOnly() {
   const orders = getFilteredOrders();
   const adjustments = getFilteredAdjustments();
+  const storeTpvAmount = getStoreTpvForActiveDate();
 
   let ordersCash = 0;
   let ordersCard = 0;
@@ -2396,7 +2649,7 @@ function renderCashSummaryTotalsOnly() {
   const netCard = ordersCard + adjCard;
   const netTransfer = ordersTransfer + adjTransfer;
   const netBizum = ordersBizum + adjBizum;
-  const grandTotal = netCash + netCard + netTransfer + netBizum;
+  const grandTotal = netCash + netCard + netTransfer + netBizum + storeTpvAmount;
 
   const billsDirect = Number(kdsState.cashBreakdown.billsDirect) || 0;
   const coinsDirect = Number(kdsState.cashBreakdown.coinsDirect) || 0;
@@ -2407,7 +2660,7 @@ function renderCashSummaryTotalsOnly() {
   const kpiCashSub = document.getElementById("kpi-cash-sub");
   if (kpiCashEl) kpiCashEl.textContent = `${grandTotal.toFixed(2)} €`;
   if (kpiCashSub) {
-    kpiCashSub.textContent = `💵 Efec: ${netCash.toFixed(0)}€ | 💳 Tarj: ${netCard.toFixed(0)}€ | 📲 Bizum: ${netBizum.toFixed(0)}€`;
+    kpiCashSub.textContent = `💵 Efec: ${netCash.toFixed(0)}€ | 💳 Tarj: ${netCard.toFixed(0)}€ | 📟 TPV: ${storeTpvAmount.toFixed(0)}€`;
   }
 
   const diffBox = document.getElementById("cash-counted-diff-box");
@@ -2436,13 +2689,13 @@ function renderCashSummaryTotalsOnly() {
       <div class="cash-kpi-title">💵 EFECTIVO EN CAJA</div>
       <div class="cash-kpi-amount">${netCash.toFixed(2)} €</div>
       <div class="cash-kpi-detail">
-        Pedidos: ${ordersCash.toFixed(2)}€ ${adjCash !== 0 ? `| Ajustes: ${adjCash > 0 ? "+" : ""}${adjCash.toFixed(2)}€` : ""}<br>
+        Repartos: ${ordersCash.toFixed(2)}€ ${adjCash !== 0 ? `| Ajustes: ${adjCash > 0 ? "+" : ""}${adjCash.toFixed(2)}€` : ""}<br>
         ${countedCash > 0 ? `Billetes: ${billsDirect.toFixed(2)}€ • Monedas: ${coinsDirect.toFixed(2)}€` : "Usa el desglose de Billetes y Monedas abajo"}
       </div>
     </div>
 
     <div class="cash-kpi-card cash-card-blue">
-      <div class="cash-kpi-title">💳 TARJETA (DATÁFONO)</div>
+      <div class="cash-kpi-title">💳 TARJETA REPARTIDORES</div>
       <div class="cash-kpi-amount">${netCard.toFixed(2)} €</div>
       <div class="cash-kpi-detail">
         Pedidos: ${ordersCard.toFixed(2)}€ ${adjCard !== 0 ? `| Ajustes: ${adjCard > 0 ? "+" : ""}${adjCard.toFixed(2)}€` : ""}
@@ -2450,33 +2703,66 @@ function renderCashSummaryTotalsOnly() {
     </div>
 
     <div class="cash-kpi-card cash-card-purple">
-      <div class="cash-kpi-title">🏦 TRANSFERENCIA</div>
-      <div class="cash-kpi-amount">${netTransfer.toFixed(2)} €</div>
+      <div class="cash-kpi-title">🏦 TRANSF. + 📲 BIZUM</div>
+      <div class="cash-kpi-amount">${(netTransfer + netBizum).toFixed(2)} €</div>
       <div class="cash-kpi-detail">
-        Pedidos: ${ordersTransfer.toFixed(2)}€ ${adjTransfer !== 0 ? `| Ajustes: ${adjTransfer > 0 ? "+" : ""}${adjTransfer.toFixed(2)}€` : ""}
+        🏦 Transf: ${netTransfer.toFixed(2)}€ &bull; 📲 Bizum: ${netBizum.toFixed(2)}€
       </div>
     </div>
 
     <div class="cash-kpi-card cash-card-cyan">
-      <div class="cash-kpi-title">📲 BIZUM</div>
-      <div class="cash-kpi-amount">${netBizum.toFixed(2)} €</div>
+      <div class="cash-kpi-title">📟 TPV DE TIENDA (TIQUES)</div>
+      <div class="cash-kpi-amount">${storeTpvAmount.toFixed(2)} €</div>
       <div class="cash-kpi-detail">
-        Pedidos: ${ordersBizum.toFixed(2)}€ ${adjBizum !== 0 ? `| Ajustes: ${adjBizum > 0 ? "+" : ""}${adjBizum.toFixed(2)}€` : ""}
+        Total tiques sacados hoy en TPV de tienda
       </div>
     </div>
 
     <div class="cash-kpi-card cash-card-gold">
-      <div class="cash-kpi-title">💰 GRAN TOTAL CAJA</div>
+      <div class="cash-kpi-title">💰 GRAN TOTAL DÍA</div>
       <div class="cash-kpi-amount">${grandTotal.toFixed(2)} €</div>
       <div class="cash-kpi-detail">
-        ✅ Liquidados OK: <strong>${settledTotal.toFixed(2)}€</strong><br>
-        ⏳ Pendientes OK: <strong>${pendingTotal.toFixed(2)}€</strong>
+        ✅ Liquidados OK: <strong>${settledTotal.toFixed(2)}€</strong> | ⏳ Pend: <strong>${pendingTotal.toFixed(2)}€</strong><br>
+        📟 Incluye TPV Tienda: <strong>${storeTpvAmount.toFixed(2)}€</strong>
       </div>
     </div>
   `;
 }
 
+function groupOrdersByRiderKey(ordersList) {
+  const groups = {};
+  ordersList.forEach((o) => {
+    ensureOrderPaymentSplit(o);
+    const gKey = getOrderGroupKey(o);
+    if (!groups[gKey]) {
+      groups[gKey] = {
+        key: gKey,
+        label: getOrderGroupLabel(gKey),
+        orders: [],
+        total: 0,
+        cash: 0,
+        card: 0,
+        transfer: 0,
+        bizum: 0
+      };
+    }
+    groups[gKey].orders.push(o);
+    groups[gKey].total += Number(o.total) || 0;
+    groups[gKey].cash += Number(o.paymentSplit.cash) || 0;
+    groups[gKey].card += Number(o.paymentSplit.card) || 0;
+    groups[gKey].transfer += Number(o.paymentSplit.transfer) || 0;
+    groups[gKey].bizum += Number(o.paymentSplit.bizum) || 0;
+  });
+  return Object.values(groups);
+}
+
 function renderCashClosingSection() {
+  const tpvInput = document.getElementById("cash-store-tpv-input");
+  if (tpvInput && document.activeElement !== tpvInput) {
+    const tpvVal = getStoreTpvForActiveDate();
+    tpvInput.value = tpvVal > 0 ? tpvVal.toFixed(2) : "";
+  }
+
   renderCashSummaryTotalsOnly();
 
   // 1. Renderizar lista de ajustes manuales (+/-)
@@ -2506,9 +2792,9 @@ function renderCashClosingSection() {
     }
   }
 
-  // 2. Renderizar las dos tablas/lados de liquidación de repartidores:
-  // Lado Izquierdo: Pendientes de cierre (settled === false)
-  // Lado Derecho: Cierre Correcto / Liquidados (settled === true)
+  // 2. Renderizar las dos columnas agrupadas por Repartidor:
+  // Lado Izquierdo: Pendientes agrupados por Repartidor (con botón OK de todo el Repartidor)
+  // Lado Derecho: Cierre Correcto / Liquidados con Desplegable del Total de cada Repartidor
   const orders = getFilteredOrders();
   const pendingOrders = orders.filter((o) => !o.settled);
   const settledOrders = orders.filter((o) => o.settled);
@@ -2525,11 +2811,43 @@ function renderCashClosingSection() {
     if (pendingOrders.length === 0) {
       pendingBody.innerHTML = `
         <div class="settlement-empty">
-          🎉 ¡Todos los pedidos de esta fecha están cerrados y verificados en el lado derecho (OK)!
+          🎉 ¡Todos los repartidores y pedidos de esta fecha están cerrados y verificados en el lado derecho (OK)!
         </div>
       `;
     } else {
-      pendingBody.innerHTML = pendingOrders.map((o) => renderSettlementOrderCard(o, false)).join("");
+      const pendingGroups = groupOrdersByRiderKey(pendingOrders);
+      pendingBody.innerHTML = pendingGroups
+        .map(
+          (grp) => `
+          <div style="background:#090d16; border:1.5px solid #334155; border-radius:12px; padding:10px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding-bottom:8px; border-bottom:1px solid #1e293b; margin-bottom:8px;">
+              <div>
+                <div style="font-size:0.95rem; font-weight:900; color:#38bdf8;">
+                  ${grp.label} <span style="font-size:0.76rem; color:#94a3b8; font-weight:700;">(${grp.orders.length} ${grp.orders.length === 1 ? "pedido" : "pedidos"})</span>
+                </div>
+                <div style="font-size:0.75rem; color:#cbd5e1; margin-top:2px;">
+                  💵 Efectivo: <strong>${grp.cash.toFixed(2)}€</strong> &bull;
+                  💳 Tarjeta: <strong>${grp.card.toFixed(2)}€</strong> &bull;
+                  🏦 Transf: <strong>${grp.transfer.toFixed(2)}€</strong> &bull;
+                  📲 Bizum: <strong>${grp.bizum.toFixed(2)}€</strong>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <strong style="font-size:1.05rem; color:#fbbf24;">Total: ${grp.total.toFixed(2)} €</strong>
+                <button type="button" class="btn-settle-ok" onclick="settleAllRiderOrders('${grp.key}')" title="Dar el OK al total de este repartidor y pasarlo a Cierre Correcto">
+                  ✅ OK CIERRE ${grp.label.toUpperCase()} (${grp.total.toFixed(2)}€) ➔
+                </button>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              ${grp.orders.map((o) => renderSettlementOrderCard(o, false)).join("")}
+            </div>
+          </div>
+        `
+        )
+        .join("");
+
       pendingOrders.forEach((o) => updateOrderSplitStatusUI(o.id));
     }
   }
@@ -2538,67 +2856,337 @@ function renderCashClosingSection() {
     if (settledOrders.length === 0) {
       doneBody.innerHTML = `
         <div class="settlement-empty">
-          Pulsa el botón verde <strong>"✅ OK"</strong> en cualquier pedido de la izquierda cuando hayas comprobado su cobro para pasarlo a este lado.
+          Pulsa <strong>"✅ OK CIERRE"</strong> en cualquier repartidor de la izquierda para pasar su resumen desplegable a este lado.
         </div>
       `;
     } else {
-      // Resumen agrupado por Repartidor en el lado de Cierre Correcto + listado de sus pedidos
-      const byRider = {};
-      settledOrders.forEach((o) => {
-        ensureOrderPaymentSplit(o);
-        const rObj = kdsState.riders.find((r) => r.id === o.riderId);
-        const rName = rObj ? rObj.name : o.type === "pickup" ? "🏢 Recogida en Local" : "⚠️ Sin Repartidor";
-        if (!byRider[rName]) {
-          byRider[rName] = { total: 0, cash: 0, card: 0, transfer: 0, bizum: 0, count: 0 };
-        }
-        byRider[rName].total += Number(o.total) || 0;
-        byRider[rName].cash += Number(o.paymentSplit.cash) || 0;
-        byRider[rName].card += Number(o.paymentSplit.card) || 0;
-        byRider[rName].transfer += Number(o.paymentSplit.transfer) || 0;
-        byRider[rName].bizum += Number(o.paymentSplit.bizum) || 0;
-        byRider[rName].count += 1;
-      });
+      const settledGroups = groupOrdersByRiderKey(settledOrders);
+      doneBody.innerHTML = settledGroups
+        .map(
+          (grp) => `
+          <details class="settled-rider-summary-pill" style="margin-bottom:8px; cursor:pointer; background:rgba(16, 185, 129, 0.1); border:1.5px solid #10b981; border-radius:12px; padding:10px 12px;">
+            <summary style="list-style:none; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; outline:none;">
+              <div>
+                <div style="font-size:0.95rem; font-weight:900; color:#34d399; display:flex; align-items:center; gap:6px;">
+                  <span>✅ ${grp.label}</span>
+                  <span style="font-size:0.75rem; background:rgba(16,185,129,0.2); color:#a7f3d0; padding:2px 8px; border-radius:999px;">
+                    ${grp.orders.length} ${grp.orders.length === 1 ? "pedido" : "pedidos"} &bull; 🔽 Desplegar detalle
+                  </span>
+                </div>
+                <div style="font-size:0.78rem; color:#e2e8f0; margin-top:4px;">
+                  💵 Efectivo: <strong style="color:#34d399;">${grp.cash.toFixed(2)}€</strong> &nbsp;|&nbsp;
+                  💳 Tarjeta: <strong style="color:#60a5fa;">${grp.card.toFixed(2)}€</strong> &nbsp;|&nbsp;
+                  🏦 Transf: <strong style="color:#c084fc;">${grp.transfer.toFixed(2)}€</strong> &nbsp;|&nbsp;
+                  📲 Bizum: <strong style="color:#38bdf8;">${grp.bizum.toFixed(2)}€</strong>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <strong style="color:#34d399; font-size:1.15rem;">${grp.total.toFixed(2)} €</strong>
+                <button type="button" class="btn-mini" onclick="event.stopPropagation(); unSettleAllRiderOrders('${grp.key}')" title="Reabrir todos los pedidos de este repartidor">
+                  ↩️ Reabrir
+                </button>
+              </div>
+            </summary>
 
-      const riderSummariesHtml = Object.keys(byRider)
-        .map((rName) => {
-          const st = byRider[rName];
-          return `
-            <div class="settled-rider-summary-pill">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <strong>✅ ${rName} (${st.count} ${st.count === 1 ? "pedido" : "pedidos"})</strong>
-                <strong style="color:#34d399; font-size:0.95rem;">Total: ${st.total.toFixed(2)} €</strong>
-              </div>
-              <div style="font-size:0.75rem; color:#cbd5e1; margin-top:3px;">
-                💵 Efectivo: <strong>${st.cash.toFixed(2)}€</strong> &bull;
-                💳 Tarjeta: <strong>${st.card.toFixed(2)}€</strong> &bull;
-                🏦 Transf: <strong>${st.transfer.toFixed(2)}€</strong> &bull;
-                📲 Bizum: <strong>${st.bizum.toFixed(2)}€</strong>
-              </div>
+            <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(16, 185, 129, 0.35); display:flex; flex-direction:column; gap:6px;">
+              ${grp.orders.map((o) => renderSettlementOrderCard(o, true)).join("")}
             </div>
-          `;
-        })
+          </details>
+        `
+        )
         .join("");
-
-      doneBody.innerHTML = `
-        <div style="margin-bottom:10px; display:flex; flex-direction:column; gap:6px;">
-          ${riderSummariesHtml}
-        </div>
-        ${settledOrders.map((o) => renderSettlementOrderCard(o, true)).join("")}
-      `;
     }
   }
+
+  // 3. Renderizar el Cuadro Resumen Ejecutivo Final para mandar Captura a los Jefes
+  renderBossClosingReport();
+}
+
+function renderBossClosingReport() {
+  const container = document.getElementById("boss-closing-report-container");
+  if (!container) return;
+
+  const orders = getFilteredOrders();
+  const adjustments = getFilteredAdjustments();
+  const storeTpvAmount = getStoreTpvForActiveDate();
+  const riderGroups = groupOrdersByRiderKey(orders);
+
+  let totalRidersCash = 0;
+  let totalRidersCard = 0;
+  let totalRidersTransfer = 0;
+  let totalRidersBizum = 0;
+  let totalRidersAll = 0;
+
+  riderGroups.forEach((g) => {
+    totalRidersCash += g.cash;
+    totalRidersCard += g.card;
+    totalRidersTransfer += g.transfer;
+    totalRidersBizum += g.bizum;
+    totalRidersAll += g.total;
+  });
+
+  let adjCash = 0;
+  let adjCard = 0;
+  let adjTransfer = 0;
+  let adjBizum = 0;
+  adjustments.forEach((a) => {
+    const amt = Number(a.amount) || 0;
+    if (a.method === "card") adjCard += amt;
+    else if (a.method === "transfer") adjTransfer += amt;
+    else if (a.method === "bizum") adjBizum += amt;
+    else adjCash += amt;
+  });
+
+  const finalCash = totalRidersCash + adjCash;
+  const finalCard = totalRidersCard + adjCard;
+  const finalTransfer = totalRidersTransfer + adjTransfer;
+  const finalBizum = totalRidersBizum + adjBizum;
+  const grandTotalDay = finalCash + finalCard + finalTransfer + finalBizum + storeTpvAmount;
+
+  const billsDirect = Number(kdsState.cashBreakdown.billsDirect) || 0;
+  const coinsDirect = Number(kdsState.cashBreakdown.coinsDirect) || 0;
+  const countedCash = billsDirect + coinsDirect;
+
+  // Filas por categoría (Tarjeta: Nombre repartidor y total; Efectivo: Nombre repartidor y total, etc.)
+  const cardRowsHtml = riderGroups
+    .filter((g) => g.card > 0)
+    .map(
+      (g) => `
+      <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #1e293b; font-size:0.84rem;">
+        <span>${g.label}</span>
+        <strong style="color:#60a5fa;">${g.card.toFixed(2)} €</strong>
+      </div>
+    `
+    )
+    .join("");
+
+  const cashRowsHtml = riderGroups
+    .filter((g) => g.cash > 0)
+    .map(
+      (g) => `
+      <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #1e293b; font-size:0.84rem;">
+        <span>${g.label}</span>
+        <strong style="color:#34d399;">${g.cash.toFixed(2)} €</strong>
+      </div>
+    `
+    )
+    .join("");
+
+  const bizumTransfRowsHtml = riderGroups
+    .filter((g) => g.bizum > 0 || g.transfer > 0)
+    .map(
+      (g) => `
+      <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #1e293b; font-size:0.84rem;">
+        <span>${g.label} ${g.bizum > 0 ? `(Bizum: ${g.bizum.toFixed(2)}€)` : ""} ${g.transfer > 0 ? `(Transf: ${g.transfer.toFixed(2)}€)` : ""}</span>
+        <strong style="color:#c084fc;">${(g.bizum + g.transfer).toFixed(2)} €</strong>
+      </div>
+    `
+    )
+    .join("");
+
+  const allRidersTotalsHtml = riderGroups
+    .map((g) => {
+      const allSettled = g.orders.every((o) => o.settled);
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; background:#090d16; border-radius:6px; border:1px solid ${allSettled ? "#10b981" : "#334155"}; font-size:0.82rem;">
+          <div>
+            <strong>${allSettled ? "✅" : "⏳"} ${g.label}</strong>
+            <span style="color:#94a3b8; font-size:0.74rem; margin-left:6px;">
+              (Efec: ${g.cash.toFixed(0)}€ | Tarj: ${g.card.toFixed(0)}€${g.bizum > 0 ? ` | Bizum: ${g.bizum.toFixed(0)}€` : ""}${g.transfer > 0 ? ` | Transf: ${g.transfer.toFixed(0)}€` : ""})
+            </span>
+          </div>
+          <strong style="color:#fbbf24; font-size:0.92rem;">${g.total.toFixed(2)} €</strong>
+        </div>
+      `;
+    })
+    .join("");
+
+  container.innerHTML = `
+    <div id="boss-screenshot-card" style="background:linear-gradient(145deg, #0b1120 0%, #0f172a 100%); border:2px solid #f59e0b; border-radius:16px; padding:16px; box-shadow:0 12px 30px rgba(0,0,0,0.45);">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding-bottom:12px; border-bottom:2px solid #1e293b; margin-bottom:14px;">
+        <div>
+          <div style="font-size:0.74rem; font-weight:900; color:#fbbf24; text-transform:uppercase; letter-spacing:0.06em;">
+            📸 RESUMEN OFICIAL DE CIERRE DE TURNO (LISTO PARA CAPTURA A JEFES)
+          </div>
+          <h3 style="font-size:1.18rem; font-weight:900; color:#f8fafc; margin-top:2px;">
+            🥘 Socarratt Madrid &bull; Cierre ${formatHumanDate(kdsState.selectedFilterDate)}
+          </h3>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn-kds btn-kds-primary" onclick="copyBossClosingSummaryText()" style="background:#10b981; border-color:#059669; color:#052e16; font-weight:900;">
+            📋 Copiar Resumen para WhatsApp Jefes
+          </button>
+        </div>
+      </div>
+
+      <!-- 4 Bloques separados por Categoría para la captura de los Jefes -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin-bottom:14px;">
+        
+        <!-- 1. TARJETA POR REPARTIDOR -->
+        <div style="background:#090d16; border:1px solid #1d4ed8; border-radius:12px; padding:12px;">
+          <div style="font-size:0.82rem; font-weight:900; color:#60a5fa; margin-bottom:8px; border-bottom:1px solid #1e293b; padding-bottom:4px;">
+            💳 1. TARJETA (POR REPARTIDOR)
+          </div>
+          ${cardRowsHtml || `<div style="font-size:0.78rem; color:#64748b; padding:4px 0;">Sin cobros en tarjeta de repartidores</div>`}
+          ${adjCard !== 0 ? `<div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#93c5fd; padding-top:4px;"><span>Ajustes Tarjeta:</span><strong>${adjCard > 0 ? "+" : ""}${adjCard.toFixed(2)} €</strong></div>` : ""}
+          <div style="display:flex; justify-content:space-between; margin-top:8px; padding-top:6px; border-top:1.5px solid #1e3a8a; font-weight:900; font-size:0.95rem; color:#60a5fa;">
+            <span>TOTAL TARJETA REPARTIDORES:</span>
+            <span>${finalCard.toFixed(2)} €</span>
+          </div>
+        </div>
+
+        <!-- 2. EFECTIVO POR REPARTIDOR + CAJA APARTE -->
+        <div style="background:#090d16; border:1px solid #059669; border-radius:12px; padding:12px;">
+          <div style="font-size:0.82rem; font-weight:900; color:#34d399; margin-bottom:8px; border-bottom:1px solid #1e293b; padding-bottom:4px;">
+            💵 2. EFECTIVO (REPARTIDORES Y CAJA)
+          </div>
+          ${cashRowsHtml || `<div style="font-size:0.78rem; color:#64748b; padding:4px 0;">Sin cobros en efectivo de repartidores</div>`}
+          ${adjustments
+            .filter((a) => !a.method || a.method === "cash")
+            .map(
+              (a) => `
+              <div style="display:flex; justify-content:space-between; font-size:0.79rem; color:${a.amount >= 0 ? "#6ee7b7" : "#fca5a5"}; padding:3px 0;">
+                <span>${a.amount >= 0 ? "➕" : "➖"} ${a.concept}</span>
+                <strong>${a.amount >= 0 ? "+" : ""}${Number(a.amount).toFixed(2)} €</strong>
+              </div>
+            `
+            )
+            .join("")}
+          ${countedCash > 0 ? `
+            <div style="font-size:0.74rem; color:#a7f3d0; margin-top:4px; background:rgba(16,185,129,0.1); padding:4px 6px; border-radius:6px;">
+              💵 Billetes: <strong>${billsDirect.toFixed(2)}€</strong> + 🪙 Monedas: <strong>${coinsDirect.toFixed(2)}€</strong> = <strong>${countedCash.toFixed(2)}€</strong>
+            </div>
+          ` : ""}
+          <div style="display:flex; justify-content:space-between; margin-top:8px; padding-top:6px; border-top:1.5px solid #065f46; font-weight:900; font-size:0.95rem; color:#34d399;">
+            <span>TOTAL EFECTIVO CAJA:</span>
+            <span>${finalCash.toFixed(2)} €</span>
+          </div>
+        </div>
+
+        <!-- 3. BIZUM / TRANSFERENCIA + TPV TIENDA -->
+        <div style="background:#090d16; border:1px solid #7c3aed; border-radius:12px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <div style="font-size:0.82rem; font-weight:900; color:#c084fc; margin-bottom:8px; border-bottom:1px solid #1e293b; padding-bottom:4px;">
+              📲 3. BIZUM / TRANSF. &bull; 📟 TPV TIENDA
+            </div>
+            ${bizumTransfRowsHtml || `<div style="font-size:0.78rem; color:#64748b; padding:4px 0;">Sin cobros en Bizum / Transferencia</div>`}
+            <div style="display:flex; justify-content:space-between; margin-top:6px; padding-top:4px; border-top:1px dashed #334155; font-size:0.84rem; color:#e9d5ff;">
+              <span>Subtotal Bizum + Transf:</span>
+              <strong>${(finalBizum + finalTransfer).toFixed(2)} €</strong>
+            </div>
+          </div>
+
+          <div style="margin-top:10px; padding-top:8px; border-top:1.5px solid #3b0764; display:flex; justify-content:space-between; align-items:center; font-weight:900; font-size:0.95rem; color:#38bdf8;">
+            <span>📟 TPV TIENDA (TIQUES DÍA):</span>
+            <span>${storeTpvAmount.toFixed(2)} €</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cierre total por cada Repartidor + Gran Total -->
+      <div style="background:#111827; border:1px solid #334155; border-radius:12px; padding:10px 12px;">
+        <div style="font-size:0.76rem; font-weight:900; color:#cbd5e1; text-transform:uppercase; margin-bottom:6px;">
+          🛵 RESUMEN CIERRE TOTAL POR REPARTIDOR:
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:6px; margin-bottom:10px;">
+          ${allRidersTotalsHtml || `<div style="font-size:0.78rem; color:#64748b;">No hay pedidos registrados en esta fecha.</div>`}
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding-top:10px; border-top:2px solid #f59e0b;">
+          <div style="font-size:0.84rem; color:#e2e8f0;">
+            🛵 Total Repartidores: <strong>${(finalCash + finalCard + finalTransfer + finalBizum).toFixed(2)} €</strong>
+            &nbsp;+&nbsp;
+            📟 TPV Tienda: <strong>${storeTpvAmount.toFixed(2)} €</strong>
+          </div>
+          <div style="font-size:1.25rem; font-weight:900; color:#fbbf24;">
+            💰 GRAN TOTAL DEL DÍA: ${grandTotalDay.toFixed(2)} €
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function copyBossClosingSummaryText() {
+  const orders = getFilteredOrders();
+  const adjustments = getFilteredAdjustments();
+  const storeTpvAmount = getStoreTpvForActiveDate();
+  const riderGroups = groupOrdersByRiderKey(orders);
+
+  let adjCash = 0;
+  let adjCard = 0;
+  let adjTransfer = 0;
+  let adjBizum = 0;
+  adjustments.forEach((a) => {
+    const amt = Number(a.amount) || 0;
+    if (a.method === "card") adjCard += amt;
+    else if (a.method === "transfer") adjTransfer += amt;
+    else if (a.method === "bizum") adjBizum += amt;
+    else adjCash += amt;
+  });
+
+  let totalRidersCash = 0;
+  let totalRidersCard = 0;
+  let totalRidersTransfer = 0;
+  let totalRidersBizum = 0;
+  riderGroups.forEach((g) => {
+    totalRidersCash += g.cash;
+    totalRidersCard += g.card;
+    totalRidersTransfer += g.transfer;
+    totalRidersBizum += g.bizum;
+  });
+
+  const finalCash = totalRidersCash + adjCash;
+  const finalCard = totalRidersCard + adjCard;
+  const finalTransfer = totalRidersTransfer + adjTransfer;
+  const finalBizum = totalRidersBizum + adjBizum;
+  const grandTotalDay = finalCash + finalCard + finalTransfer + finalBizum + storeTpvAmount;
+
+  let txt = `📊 *CIERRE DE TURNO SOCARRATT (${formatHumanDate(kdsState.selectedFilterDate)})*\n\n`;
+
+  txt += `💳 *TARJETA (POR REPARTIDOR):*\n`;
+  const cardGroups = riderGroups.filter((g) => g.card > 0);
+  if (cardGroups.length === 0) txt += `• Sin cobros en tarjeta\n`;
+  else cardGroups.forEach((g) => (txt += `• ${g.label}: *${g.card.toFixed(2)} €*\n`));
+  txt += `👉 *Total Tarjeta Repartidores: ${finalCard.toFixed(2)} €*\n\n`;
+
+  txt += `💵 *EFECTIVO (POR REPARTIDOR Y CAJA):*\n`;
+  const cashGroups = riderGroups.filter((g) => g.cash > 0);
+  if (cashGroups.length === 0) txt += `• Sin cobros en efectivo\n`;
+  else cashGroups.forEach((g) => (txt += `• ${g.label}: *${g.cash.toFixed(2)} €*\n`));
+  adjustments
+    .filter((a) => !a.method || a.method === "cash")
+    .forEach((a) => {
+      txt += `• ${a.amount >= 0 ? "➕" : "➖"} ${a.concept}: *${a.amount >= 0 ? "+" : ""}${Number(a.amount).toFixed(2)} €*\n`;
+    });
+  txt += `👉 *Total Efectivo Caja: ${finalCash.toFixed(2)} €*\n\n`;
+
+  if (finalBizum > 0 || finalTransfer > 0) {
+    txt += `📲 *BIZUM Y TRANSFERENCIA:*\n`;
+    riderGroups
+      .filter((g) => g.bizum > 0 || g.transfer > 0)
+      .forEach((g) => {
+        txt += `• ${g.label}: *${(g.bizum + g.transfer).toFixed(2)} €*\n`;
+      });
+    txt += `👉 *Total Bizum/Transf: ${(finalBizum + finalTransfer).toFixed(2)} €*\n\n`;
+  }
+
+  txt += `🛵 *CIERRE TOTAL POR REPARTIDOR:*\n`;
+  riderGroups.forEach((g) => {
+    txt += `• ${g.label}: *${g.total.toFixed(2)} €* (Efec: ${g.cash.toFixed(0)}€ | Tarj: ${g.card.toFixed(0)}€)\n`;
+  });
+
+  txt += `\n📟 *TPV DE TIENDA (TIQUES DÍA):* *${storeTpvAmount.toFixed(2)} €*\n`;
+  txt += `---------------------------------\n`;
+  txt += `💰 *GRAN TOTAL DEL DÍA:* *${grandTotalDay.toFixed(2)} €*`;
+
+  navigator.clipboard?.writeText(txt);
+  alert("✅ Resumen de cierre copiado al portapapeles listo para pegar en el WhatsApp de los jefes:\n\n" + txt);
 }
 
 function renderSettlementOrderCard(order, isSettled) {
   ensureOrderPaymentSplit(order);
   const sp = order.paymentSplit;
-  const rObj = kdsState.riders.find((r) => r.id === order.riderId);
-  const riderLabel = rObj
-    ? `🛵 ${rObj.name}`
-    : order.type === "pickup"
-    ? "🏢 Recogida en Tienda"
-    : "⚠️ Sin repartidor asignado";
-
   const dishesText = (order.items || []).map((i) => formatCleanItemLabel(i)).join(" + ");
 
   if (isSettled) {
@@ -2609,20 +3197,19 @@ function renderSettlementOrderCard(order, isSettled) {
     if (sp.bizum > 0) parts.push(`📲 Bizum: <strong>${sp.bizum.toFixed(2)}€</strong>`);
 
     return `
-      <div class="settlement-card settled-item">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+      <div class="settlement-card settled-item" style="padding:8px 10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
           <div>
-            <span class="settlement-rider-tag settled">${riderLabel}</span>
-            <span style="font-size:0.75rem; color:#94a3b8; margin-left:6px;">⏰ ${order.slot}h &bull; 👤 ${order.clientName}</span>
-            <div style="font-size:0.84rem; font-weight:800; color:#f8fafc; margin-top:4px;">${dishesText}</div>
-            <div style="font-size:0.78rem; color:#34d399; margin-top:4px;">
+            <span style="font-size:0.75rem; color:#94a3b8;">⏰ ${order.slot}h &bull; 👤 <strong>${order.clientName}</strong></span>
+            <div style="font-size:0.82rem; font-weight:800; color:#f8fafc; margin-top:2px;">${dishesText}</div>
+            <div style="font-size:0.76rem; color:#34d399; margin-top:2px;">
               ${parts.join(" &nbsp;+&nbsp; ") || "0.00€"}
             </div>
           </div>
-          <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
-            <strong style="font-size:1.05rem; color:#34d399;">${Number(order.total || 0).toFixed(2)} €</strong>
-            <button type="button" class="btn-mini" onclick="toggleOrderSettledOk('${order.id}', false)" title="Devolver a pendientes para modificar">
-              ↩️ Editar / Reabrir
+          <div style="text-align:right; display:flex; align-items:center; gap:8px;">
+            <strong style="font-size:0.95rem; color:#34d399;">${Number(order.total || 0).toFixed(2)} €</strong>
+            <button type="button" class="btn-mini" onclick="toggleOrderSettledOk('${order.id}', false)" title="Devolver este pedido a pendientes">
+              ↩️
             </button>
           </div>
         </div>
@@ -2689,8 +3276,8 @@ function renderSettlementOrderCard(order, isSettled) {
       <div class="settlement-card-footer">
         <div id="split-diff-${order.id}" style="font-size:0.75rem; display:flex; align-items:center; gap:6px; flex-wrap:wrap;"></div>
 
-        <button type="button" class="btn-settle-ok" onclick="toggleOrderSettledOk('${order.id}', true)">
-          ✅ OK (Pasar a Cierre Correcto ➔)
+        <button type="button" class="btn-settle-ok" style="padding:5px 10px; font-size:0.74rem;" onclick="toggleOrderSettledOk('${order.id}', true)">
+          ✅ OK Pedido Individual ➔
         </button>
       </div>
     </div>
@@ -2732,7 +3319,13 @@ function assignRiderToOrder(orderId, riderId) {
   order.riderId = riderId;
   if (riderId) {
     const r = kdsState.riders.find((x) => x.id === riderId);
-    if (r) order.vehicle = r.vehicle === "car" ? "car" : "bike";
+    if (r) {
+      order.vehicle = r.vehicle === "car" ? "car" : "bike";
+      if (order.vehicle === "bike") {
+        order.outboundMinutes = Math.min(15, Math.max(5, order.outboundMinutes || 12));
+        order.returnMinutes = Math.min(12, Math.max(5, order.returnMinutes || 10));
+      }
+    }
   }
 
   saveKdsOrders();
@@ -2817,26 +3410,48 @@ function cycleOrderStatus(orderId) {
 }
 
 // ============================================================================
-// GESTIÓN Y EDICIÓN DE LA PLANTILLA DE REPARTIDORES
+// GESTIÓN Y EDICIÓN COMPACTA DE LA PLANTILLA DE REPARTIDORES (PARA 20+ REPARTIDORES)
 // ============================================================================
+let editingRiderModalId = null;
+
 function openRidersModal() {
+  editingRiderModalId = null;
   const modal = document.getElementById("riders-manage-modal");
   renderRidersModalList();
   modal.classList.add("active");
 }
 
 function openEditSingleRider(riderId) {
-  openRidersModal();
+  editingRiderModalId = riderId;
+  const modal = document.getElementById("riders-manage-modal");
+  renderRidersModalList();
+  modal.classList.add("active");
   setTimeout(() => {
     const nameInput = document.getElementById(`edit-rider-name-${riderId}`);
     if (nameInput) {
       nameInput.focus();
       nameInput.select();
     }
-  }, 80);
+  }, 60);
+}
+
+function toggleEditRiderInModal(riderId) {
+  if (editingRiderModalId === riderId) {
+    editingRiderModalId = null;
+  } else {
+    editingRiderModalId = riderId;
+  }
+  renderRidersModalList();
+  if (editingRiderModalId) {
+    setTimeout(() => {
+      const nameInput = document.getElementById(`edit-rider-name-${riderId}`);
+      if (nameInput) nameInput.focus();
+    }, 50);
+  }
 }
 
 function closeRidersModal() {
+  editingRiderModalId = null;
   document.getElementById("riders-manage-modal").classList.remove("active");
 }
 
@@ -2860,47 +3475,60 @@ function renderRidersModalList() {
 
   listEl.innerHTML = kdsState.riders
     .map((r) => {
+      const vEmoji = r.vehicle === "bike" ? "🚲 Bici" : r.vehicle === "moto" ? "🛵 Moto" : "🚗 Coche";
       const waLink = buildRiderWaLink(r);
+      const isEditing = editingRiderModalId === r.id;
       const safeName = String(r.name || "").replace(/"/g, "&quot;");
       const safePhone = String(r.phone || "").replace(/"/g, "&quot;");
 
-      return `
-      <div style="background:#0f172a; padding:10px 12px; border-radius:10px; border:1px solid #334155; display:flex; flex-direction:column; gap:8px;">
-        <div class="form-row-3col" style="gap:8px;">
-          <div>
-            <label class="form-label" style="font-size:0.68rem; color:#94a3b8;">Nombre Repartidor</label>
-            <input type="text" id="edit-rider-name-${r.id}" class="form-input" style="padding:6px 8px; font-size:0.84rem; font-weight:700;" value="${safeName}" onfocus="lastFormInteractionTs = Date.now()" oninput="onRiderInlineEdit('${r.id}')">
+      if (!isEditing) {
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#0f172a; padding:6px 10px; border-radius:8px; border:1px solid #334155; gap:8px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+              <strong style="font-size:0.85rem; color:#f8fafc;">${r.name}</strong>
+              <span style="font-size:0.74rem; color:#94a3b8;">${vEmoji} &bull; 📞 ${r.phone}</span>
+            </div>
+            <div style="display:flex; gap:5px; align-items:center;">
+              <button type="button" class="btn-mini btn-mini-cyan" style="padding:3px 8px;" onclick="toggleEditRiderInModal('${r.id}')">✏️ Editar</button>
+              <a href="${waLink}" target="_blank" class="btn-mini btn-mini-green" style="padding:3px 8px;">📲 WhatsApp</a>
+              <button type="button" class="btn-mini btn-mini-danger" style="padding:3px 7px;" onclick="deleteRider('${r.id}')" title="Eliminar repartidor">🗑️</button>
+            </div>
           </div>
-          <div>
-            <label class="form-label" style="font-size:0.68rem; color:#94a3b8;">Vehículo</label>
-            <select id="edit-rider-vehicle-${r.id}" class="form-select" style="padding:6px 8px; font-size:0.84rem;" onfocus="lastFormInteractionTs = Date.now()" onchange="onRiderInlineEdit('${r.id}')">
-              <option value="bike" ${r.vehicle === "bike" ? "selected" : ""}>🚲 Bici de Carga</option>
-              <option value="car" ${r.vehicle === "car" ? "selected" : ""}>🚗 Coche</option>
-              <option value="moto" ${r.vehicle === "moto" ? "selected" : ""}>🛵 Moto</option>
-            </select>
-          </div>
-          <div>
-            <label class="form-label" style="font-size:0.68rem; color:#94a3b8;">Teléfono WhatsApp</label>
-            <input type="tel" id="edit-rider-phone-${r.id}" class="form-input" style="padding:6px 8px; font-size:0.84rem;" value="${safePhone}" onfocus="lastFormInteractionTs = Date.now()" oninput="onRiderInlineEdit('${r.id}')">
-          </div>
-        </div>
+        `;
+      }
 
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; padding-top:4px; border-top:1px dashed #1e293b;">
-          <span id="rider-save-status-${r.id}" style="font-size:0.72rem; color:#34d399; font-weight:700;">✓ Puedes editar cualquier dato directamente</span>
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            <button type="button" class="btn-mini btn-mini-cyan" onclick="saveEditedRider('${r.id}')">💾 Guardar Cambios</button>
-            <a id="wa-rider-btn-${r.id}" href="${waLink}" target="_blank" class="btn-mini btn-mini-green">📲 Enviar App por WhatsApp</a>
-            <button type="button" class="btn-mini btn-mini-danger" onclick="deleteRider('${r.id}')">🗑️ Eliminar</button>
+      return `
+        <div style="background:#0f172a; padding:10px; border-radius:10px; border:1.5px solid #38bdf8; display:flex; flex-direction:column; gap:8px;">
+          <div class="form-row-3col" style="gap:6px;">
+            <div>
+              <label class="form-label" style="font-size:0.68rem; color:#94a3b8;">Nombre</label>
+              <input type="text" id="edit-rider-name-${r.id}" class="form-input" style="padding:5px 8px; font-size:0.82rem; font-weight:700;" value="${safeName}" onfocus="lastFormInteractionTs = Date.now()">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.68rem; color:#94a3b8;">Vehículo</label>
+              <select id="edit-rider-vehicle-${r.id}" class="form-select" style="padding:5px 8px; font-size:0.82rem;" onfocus="lastFormInteractionTs = Date.now()">
+                <option value="bike" ${r.vehicle === "bike" ? "selected" : ""}>🚲 Bici de Carga</option>
+                <option value="car" ${r.vehicle === "car" ? "selected" : ""}>🚗 Coche</option>
+                <option value="moto" ${r.vehicle === "moto" ? "selected" : ""}>🛵 Moto</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.68rem; color:#94a3b8;">Teléfono WhatsApp</label>
+              <input type="tel" id="edit-rider-phone-${r.id}" class="form-input" style="padding:5px 8px; font-size:0.82rem;" value="${safePhone}" onfocus="lastFormInteractionTs = Date.now()">
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:6px;">
+            <button type="button" class="btn-mini btn-mini-green" onclick="saveEditedRider('${r.id}')">💾 Guardar</button>
+            <button type="button" class="btn-mini" onclick="toggleEditRiderInModal('${r.id}')">✕ Cerrar</button>
           </div>
         </div>
-      </div>
-    `;
+      `;
     })
     .join("");
 }
 
-function onRiderInlineEdit(riderId) {
-  lastFormInteractionTs = Date.now();
+function saveEditedRider(riderId) {
+  lastFormInteractionTs = 0;
   const rider = kdsState.riders.find((r) => r.id === riderId);
   if (!rider) return;
 
@@ -2912,26 +3540,10 @@ function onRiderInlineEdit(riderId) {
   if (vehEl && vehEl.value) rider.vehicle = vehEl.value;
   if (phoneEl && phoneEl.value.trim()) rider.phone = phoneEl.value.trim();
 
-  const waBtn = document.getElementById(`wa-rider-btn-${riderId}`);
-  if (waBtn) waBtn.href = buildRiderWaLink(rider);
-
-  const statusEl = document.getElementById(`rider-save-status-${riderId}`);
-  if (statusEl) {
-    statusEl.textContent = "✅ Guardado automáticamente";
-    statusEl.style.color = "#34d399";
-  }
-
+  editingRiderModalId = null;
   saveKdsRiders();
+  renderRidersModalList();
   renderAllKds();
-}
-
-function saveEditedRider(riderId) {
-  onRiderInlineEdit(riderId);
-  const statusEl = document.getElementById(`rider-save-status-${riderId}`);
-  if (statusEl) {
-    statusEl.textContent = "💾 ¡Datos actualizados y sincronizados!";
-    statusEl.style.color = "#fbbf24";
-  }
 }
 
 function addNewRider() {
