@@ -45,8 +45,12 @@
         <span>👥</span> <span>Equipo</span>
       </button>
 
-      <button class="btn-kds" onclick="clearDeliveredOrders()">
+      <button class="btn-kds" onclick="clearDeliveredOrders()" title="Borrar pedidos completados">
         <span>🧹</span> <span>Limpiar</span>
+      </button>
+
+      <button class="btn-kds" onclick="clearAllOrdersForSelectedDate()" title="Vaciar todos los pedidos del día seleccionado para empezar turno en limpio" style="border-color:rgba(239,68,68,0.45); color:#fca5a5;">
+        <span>🗑️</span> <span>Vaciar Día</span>
       </button>
 
       <button id="btn-print-kds" class="btn-kds" title="Imprimir">
@@ -373,6 +377,9 @@
               <option value="15:00">15:00h (🚲 15:00-15:15h | 🚗 ~15:30h)</option>
               <option value="15:30">15:30h (🚲 15:30-15:45h | 🚗 ~16:00h)</option>
               <option value="16:00">16:00h (🚲 16:00-16:15h | 🚗 ~16:30h)</option>
+              <option value="20:30">🌙 20:30h Cena (🚲 20:30-20:45h | 🚗 ~21:00h)</option>
+              <option value="21:00">🌙 21:00h Cena (🚲 21:00-21:15h | 🚗 ~21:30h)</option>
+              <option value="21:30">🌙 21:30h Cena (🚲 21:30-21:45h | 🚗 ~22:00h)</option>
             </select>
           </div>
           <div class="form-group">

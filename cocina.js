@@ -142,8 +142,9 @@ function formatCleanItemLabel(item) {
     .trim();
 
   if (item.isVarios || rawName.toLowerCase().startsWith("varios:")) {
+    const cleanVariosBase = rawName.replace(/\s*\([+-]?\d+(?:\.\d+)?€\)\s*$/i, "").trim();
     const priceTag = item.price !== undefined ? ` (${Number(item.price).toFixed(2)}€)` : "";
-    return `${rawName}${priceTag}`;
+    return `${cleanVariosBase}${priceTag}`;
   }
 
   // Si ya termina en "6px", "7px", etc. o empieza por "2x Ración"
@@ -668,12 +669,16 @@ function loadKdsData() {
             riderId: o.riderId !== undefined ? o.riderId : ""
           });
         });
+      } else if (localStorage.getItem("socarratt_demo_cleared") === "1") {
+        kdsState.orders = [];
       } else {
         kdsState.orders = buildInitialDemoOrders();
       }
     } catch (e) {
-      kdsState.orders = buildInitialDemoOrders();
+      kdsState.orders = localStorage.getItem("socarratt_demo_cleared") === "1" ? [] : buildInitialDemoOrders();
     }
+  } else if (localStorage.getItem("socarratt_demo_cleared") === "1") {
+    kdsState.orders = [];
   } else {
     kdsState.orders = buildInitialDemoOrders();
     localStorage.setItem("socarratt_orders", JSON.stringify(kdsState.orders));
@@ -761,6 +766,7 @@ function applyMobileRiderPatch(patchData) {
           returnMinutes: est.returnMinutes
         })
       );
+      playNewOrderBell();
     }
     localStorage.setItem("socarratt_orders", JSON.stringify(kdsState.orders));
   }
@@ -772,7 +778,9 @@ function applyMobileRiderPatch(patchData) {
         senderId: myKdsClientId,
         orders: kdsState.orders,
         riders: kdsState.riders,
-        cashAdjustments: kdsState.cashAdjustments
+        cashAdjustments: kdsState.cashAdjustments,
+        cashBreakdown: kdsState.cashBreakdown,
+        demoCleared: localStorage.getItem("socarratt_demo_cleared") === "1"
       }),
       { qos: 0, retain: true }
     );
@@ -795,12 +803,37 @@ function applyMobileRiderPatch(patchData) {
   }
 }
 
+function playNewOrderBell() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const playTone = (freq, startTime, duration) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, startTime);
+      gain.gain.setValueAtTime(0.18, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+    const now = ctx.currentTime;
+    playTone(880, now, 0.22);
+    playTone(1174.66, now + 0.16, 0.35);
+  } catch (e) {}
+}
+
 function broadcastStateToMobile() {
   const payload = JSON.stringify({
     senderId: myKdsClientId,
     orders: kdsState.orders,
     riders: kdsState.riders,
-    cashAdjustments: kdsState.cashAdjustments
+    cashAdjustments: kdsState.cashAdjustments,
+    cashBreakdown: kdsState.cashBreakdown,
+    demoCleared: localStorage.getItem("socarratt_demo_cleared") === "1"
   });
 
   if (liveChannel) {
@@ -867,11 +900,19 @@ function initRealtimeMobileSync() {
           try {
             const stateData = JSON.parse(message.toString());
             if (stateData && stateData.senderId !== myKdsClientId) {
-              if (Array.isArray(stateData.orders) && stateData.orders.length > 0) {
+              if (stateData.demoCleared) {
+                localStorage.setItem("socarratt_demo_cleared", "1");
+              }
+              if (Array.isArray(stateData.orders) && (stateData.orders.length > 0 || stateData.demoCleared)) {
+                const prevIds = new Set((kdsState.orders || []).map((o) => o.id));
+                const hadNewOrder = stateData.orders.some((o) => o && o.id && !prevIds.has(o.id));
                 kdsState.orders = stateData.orders.map((o) =>
                   ensureOrderPaymentSplit({ ...o, date: normalizeOrderDate(o.date) })
                 );
                 localStorage.setItem("socarratt_orders", JSON.stringify(kdsState.orders));
+                if (hadNewOrder) {
+                  playNewOrderBell();
+                }
               }
               if (Array.isArray(stateData.riders) && stateData.riders.length > 0) {
                 stateData.riders.forEach((incR) => {
@@ -890,6 +931,10 @@ function initRealtimeMobileSync() {
               if (Array.isArray(stateData.cashAdjustments)) {
                 kdsState.cashAdjustments = stateData.cashAdjustments;
                 localStorage.setItem("socarratt_cash_adjustments", JSON.stringify(kdsState.cashAdjustments));
+              }
+              if (stateData.cashBreakdown && typeof stateData.cashBreakdown === "object") {
+                kdsState.cashBreakdown = { ...kdsState.cashBreakdown, ...stateData.cashBreakdown };
+                localStorage.setItem("socarratt_cash_breakdown", JSON.stringify(kdsState.cashBreakdown));
               }
               if (!isUserInteractingWithForm()) {
                 renderAllKds();
@@ -1642,7 +1687,14 @@ function renderKdsBoard() {
   if (kpiPaellas) kpiPaellas.textContent = totalPaellasGrandes;
   if (kpiRaciones) kpiRaciones.textContent = totalRaciones;
 
-  container.innerHTML = KITCHEN_SLOTS.map((slot) => {
+  const extraSlots = orders
+    .map((o) => o.slot)
+    .filter((s) => s && !KITCHEN_SLOTS.includes(s));
+  const activeSlotsList = Array.from(new Set([...KITCHEN_SLOTS, ...extraSlots])).sort((a, b) =>
+    a.localeCompare(b)
+  );
+
+  container.innerHTML = activeSlotsList.map((slot) => {
     const slotOrders = orders.filter((o) => o.slot === slot);
     const bikeWindowEnd = addMinutesToSlot(slot, 15);
     const carDeliverySlot = addMinutesToSlot(slot, 30);
@@ -2142,6 +2194,16 @@ function openEditOrderModal(orderId) {
   document.getElementById("m-notes").value = order.notes || "";
   document.getElementById("m-varios-concept").value = "";
   document.getElementById("m-varios-amount").value = "";
+
+  ensureOrderPaymentSplit(order);
+  const payEl = document.getElementById("m-payment-method");
+  if (payEl && order.paymentSplit) {
+    const sp = order.paymentSplit;
+    if (sp.card > 0 && sp.cash === 0) payEl.value = "card";
+    else if (sp.bizum > 0 && sp.cash === 0) payEl.value = "bizum";
+    else if (sp.transfer > 0 && sp.cash === 0) payEl.value = "transfer";
+    else payEl.value = "cash";
+  }
 
   draftOrderItems = (order.items || []).map((it) => {
     const clean = formatCleanItemLabel(it);
@@ -3301,12 +3363,47 @@ function deleteOrderFromBoard(orderId) {
 function clearDeliveredOrders() {
   const deliveredCount = kdsState.orders.filter((o) => o.status === "delivered").length;
   if (deliveredCount === 0) {
-    alert("No hay pedidos marcados como 'Completados' para limpiar.");
+    alert("No hay pedidos marcados como 'Completados' para limpiar. Si quieres vaciar todos los pedidos del día para empezar el turno en cero, pulsa '🗑️ Vaciar Día'.");
     return;
   }
   if (!confirm(`🧹 ¿Quieres borrar del tablón los ${deliveredCount} pedidos que ya están completados?`)) return;
 
   kdsState.orders = kdsState.orders.filter((o) => o.status !== "delivered");
+  if (kdsState.orders.length === 0) {
+    localStorage.setItem("socarratt_demo_cleared", "1");
+  }
+  saveKdsOrders();
+  renderAllKds();
+}
+
+function clearAllOrdersForSelectedDate() {
+  const currentOrders = getFilteredOrders();
+  const dateLabel =
+    kdsState.selectedFilterDate === "all"
+      ? "TODOS LOS DÍAS"
+      : formatHumanDateTitle(kdsState.selectedFilterDate);
+
+  if (currentOrders.length === 0) {
+    alert(`El tablón de ${dateLabel} ya está completamente limpio (0 pedidos).`);
+    return;
+  }
+
+  if (
+    !confirm(
+      `🗑️ ¿Seguro que quieres borrar los ${currentOrders.length} pedidos de ${dateLabel} para empezar el turno en limpio (0 pedidos)?`
+    )
+  ) {
+    return;
+  }
+
+  localStorage.setItem("socarratt_demo_cleared", "1");
+  if (kdsState.selectedFilterDate === "all") {
+    kdsState.orders = [];
+  } else {
+    kdsState.orders = kdsState.orders.filter(
+      (o) => normalizeOrderDate(o.date) !== kdsState.selectedFilterDate
+    );
+  }
   saveKdsOrders();
   renderAllKds();
 }

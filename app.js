@@ -853,8 +853,18 @@ function handleWhatsAppSubmit() {
     }
   });
 
+  const paymentMethodSelect = document.getElementById("client-payment-method");
+  const chosenPayMethod = paymentMethodSelect ? paymentMethodSelect.value : "cash";
+  const payLabels = {
+    cash: "💵 Efectivo",
+    card: "💳 Tarjeta (Datáfono)",
+    bizum: "📲 Bizum",
+    transfer: "🏦 Transferencia"
+  };
+
   message += `---------------------------------\n`;
   message += `💰 *TOTAL:* *${grandTotal.toFixed(2)}€*\n`;
+  message += `💳 *Pago:* ${payLabels[chosenPayMethod] || "💵 Efectivo"}\n`;
   message += `---------------------------------\n`;
 
   if (notesInput && notesInput.value.trim()) {
@@ -864,6 +874,7 @@ function handleWhatsAppSubmit() {
   // Registrar en el Tablón de Cocina (localStorage + MQTT Cloud + API Local)
   try {
     const isPickup = !isHomeDelivery();
+    const chosenStoreId = storeSelect ? storeSelect.value : state.selectedStoreId || "malasana";
     const fullAddress = isPickup
       ? `Recoge en ${chosenStoreLabel}`
       : `${addressStreet.value.trim()}${addressCity && addressCity.value.trim() ? ", " + addressCity.value.trim() : ""}`;
@@ -910,8 +921,19 @@ function handleWhatsAppSubmit() {
       kdsOrderDate = customDateInput.value;
     }
 
-    const validKitchenSlots = ["13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00"];
+    const validKitchenSlots = [
+      "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00",
+      "20:30", "21:00", "21:30"
+    ];
     const kdsSlot = validKitchenSlots.includes(state.selectedTimeSlot) ? state.selectedTimeSlot : "14:00";
+
+    const roundedGrandTotal = Math.round(grandTotal * 100) / 100;
+    const initialPaymentSplit = {
+      cash: chosenPayMethod === "cash" ? roundedGrandTotal : 0,
+      card: chosenPayMethod === "card" ? roundedGrandTotal : 0,
+      transfer: chosenPayMethod === "transfer" ? roundedGrandTotal : 0,
+      bizum: chosenPayMethod === "bizum" ? roundedGrandTotal : 0
+    };
 
     const newKdsOrder = {
       id: `ord-web-${Date.now()}`,
@@ -920,12 +942,15 @@ function handleWhatsAppSubmit() {
       slot: kdsSlot,
       date: kdsOrderDate,
       type: isPickup ? "pickup" : "delivery_whole",
+      pickupStoreId: isPickup ? chosenStoreId : "",
       vehicle: vehicle,
       riderId: "",
       address: fullAddress,
       items: orderItemsKds,
       notes: notesInput ? notesInput.value.trim() : "",
-      total: grandTotal,
+      total: roundedGrandTotal,
+      paymentSplit: initialPaymentSplit,
+      settled: false,
       status: "pending"
     };
 

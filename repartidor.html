@@ -689,6 +689,51 @@
       return { carMin, bikeMin };
     }
 
+    let selectedOrderIdByRider = "";
+
+    function selectRiderOrder(orderId) {
+      selectedOrderIdByRider = orderId;
+      renderMission(true);
+    }
+
+    function getTodayIsoStr() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    function formatPaymentCollectBanner(order) {
+      const total = Number(order.total || 0);
+      const sp = order.paymentSplit || { cash: total, card: 0, transfer: 0, bizum: 0 };
+      const cash = Number(sp.cash || 0);
+      const card = Number(sp.card || 0);
+      const bizum = Number(sp.bizum || 0);
+      const transfer = Number(sp.transfer || 0);
+
+      if (card > 0 && cash > 0) {
+        return `<div style="margin-top:8px; background:rgba(245,158,11,0.16); border:1px solid #f59e0b; color:#fde68a; padding:8px 10px; border-radius:8px; font-size:0.82rem; font-weight:800;">
+          💵💳 PAGO MIXTO: Cobrar <strong>${cash.toFixed(2)} € Efectivo</strong> + <strong>${card.toFixed(2)} € Datáfono</strong>
+        </div>`;
+      }
+      if (card >= total && total > 0) {
+        return `<div style="margin-top:8px; background:rgba(56,189,248,0.16); border:1px solid #38bdf8; color:#bae6fd; padding:8px 10px; border-radius:8px; font-size:0.82rem; font-weight:800;">
+          💳 LLEVAR DATÁFONO — Cobrar con Tarjeta: <strong>${total.toFixed(2)} €</strong>
+        </div>`;
+      }
+      if (bizum >= total && total > 0) {
+        return `<div style="margin-top:8px; background:rgba(16,185,129,0.16); border:1px solid #10b981; color:#a7f3d0; padding:8px 10px; border-radius:8px; font-size:0.82rem; font-weight:800;">
+          📲 BIZUM (${total.toFixed(2)} €) — Verificar confirmación antes de entregar
+        </div>`;
+      }
+      if (transfer >= total && total > 0) {
+        return `<div style="margin-top:8px; background:rgba(168,85,247,0.16); border:1px solid #a855f7; color:#e9d5ff; padding:8px 10px; border-radius:8px; font-size:0.82rem; font-weight:800;">
+          🏦 TRANSFERENCIA (${total.toFixed(2)} €)
+        </div>`;
+      }
+      return `<div style="margin-top:8px; background:rgba(16,185,129,0.16); border:1px solid #10b981; color:#a7f3d0; padding:8px 10px; border-radius:8px; font-size:0.82rem; font-weight:800;">
+        💵 COBRAR EN EFECTIVO: <strong>${total.toFixed(2)} €</strong>
+      </div>`;
+    }
+
     function renderMission(forceRebuild = false) {
       const container = document.getElementById("active-mission-container");
       const rider = riders.find(r => r.id === selectedRiderId);
@@ -704,12 +749,27 @@
           ? `📍 A <strong>${distKm} km</strong> del local &bull; 🚗 <strong>${times.carMin}m</strong> coche | 🚲 <strong>${times.bikeMin}m</strong> bici`
           : `📍 En Obrador Malasaña 5 (${rLat.toFixed(4)}, ${rLng.toFixed(4)})`;
 
-      const myOrders = orders.filter(o => o.riderId === rider.id && o.status !== "delivered");
-      const activeOrder = myOrders.find(o => o.status === "en_route" || o.status === "returning") || myOrders[0];
+      const todayIso = getTodayIsoStr();
+      const allPendingRiderOrders = orders
+        .filter(o => o.riderId === rider.id && o.status !== "delivered")
+        .sort((a, b) => {
+          const dA = a.date || todayIso;
+          const dB = b.date || todayIso;
+          if (dA !== dB) return dA.localeCompare(dB);
+          return String(a.slot || "").localeCompare(String(b.slot || ""));
+        });
+
+      const todayOrders = allPendingRiderOrders.filter(o => !o.date || o.date === todayIso);
+      const myOrders = todayOrders.length > 0 ? todayOrders : allPendingRiderOrders;
+
+      const activeOrder =
+        myOrders.find(o => o.id === selectedOrderIdByRider) ||
+        myOrders.find(o => o.status === "en_route" || o.status === "returning") ||
+        myOrders[0];
 
       const nowMinuteBucket = Math.floor(Date.now() / 30000);
       const sig = activeOrder
-        ? `${rider.id}|${activeOrder.id}|${activeOrder.status}|${activeOrder.slot}|${nowMinuteBucket}`
+        ? `${rider.id}|${activeOrder.id}|${activeOrder.status}|${activeOrder.slot}|${activeOrder.total}|${myOrders.length}|${nowMinuteBucket}`
         : `${rider.id}|IDLE`;
 
       if (!forceRebuild && sig === lastRenderedSignature) {
@@ -730,13 +790,29 @@
         return;
       }
 
-      const deliverySlot = addMinutesToSlot(activeOrder.slot, 30);
-      const nextRoundSlot = addMinutesToSlot(activeOrder.slot, 60);
-      const nextRoundOrder = myOrders.find(o => o.id !== activeOrder.id && o.slot === nextRoundSlot);
+      const isBikeDelivery = rider.vehicle === "bike" || activeOrder.vehicle === "bike";
+      const deliverySlot = isBikeDelivery
+        ? `${activeOrder.slot}-${addMinutesToSlot(activeOrder.slot, 15)}`
+        : addMinutesToSlot(activeOrder.slot, 30);
+      const nextRoundSlot = isBikeDelivery
+        ? addMinutesToSlot(activeOrder.slot, 30)
+        : addMinutesToSlot(activeOrder.slot, 60);
+      const nextRoundOrder = myOrders.find(o => o.id !== activeOrder.id && o.slot >= activeOrder.slot);
 
-      const outboundBudget = activeOrder.outboundMinutes || 25;
-      const returnBudget = activeOrder.returnMinutes || 15;
+      const outboundBudget = activeOrder.outboundMinutes || (isBikeDelivery ? 12 : 25);
+      const returnBudget = activeOrder.returnMinutes || (isBikeDelivery ? 10 : 15);
       const now = Date.now();
+
+      const multiOrderSelectorHtml = myOrders.length > 1
+        ? `<div style="display:flex; gap:6px; overflow-x:auto; margin-bottom:10px; padding-bottom:4px;">
+            ${myOrders.map((o, idx) => {
+              const isSel = o.id === activeOrder.id;
+              return `<button type="button" onclick="selectRiderOrder('${o.id}')" style="flex:1; min-width:130px; padding:8px 10px; border-radius:10px; font-size:0.78rem; font-weight:800; cursor:pointer; border:1px solid ${isSel ? '#38bdf8' : '#334155'}; background:${isSel ? '#0284c7' : '#1e293b'}; color:#fff;">
+                ${idx + 1}. ⏰ ${o.slot}h &bull; ${o.clientName.split(" ")[0]}
+              </button>`;
+            }).join("")}
+          </div>`
+        : "";
 
       let timerHtml = "";
       let actionHtml = "";
@@ -745,12 +821,12 @@
         timerHtml = `
           <div class="timer-banner">
             <div style="font-size:0.78rem; font-weight:800; text-transform:uppercase; color:#34d399;">
-              🥘 Preparando Salida de las ${activeOrder.slot}h
+              🥘 Preparando Salida de las ${activeOrder.slot}h (${isBikeDelivery ? "🚲 Bici 5-15m" : "🚗 Coche"})
             </div>
             <div class="timer-big">${activeOrder.slot}h</div>
             <div style="font-size:0.8rem; color:#cbd5e1;">
-              Entrega objetivo: <strong>${deliverySlot}h</strong> (${outboundBudget} min ida + aparcar + subir)<br>
-              Regreso obligatorio al local antes de las <strong>${nextRoundSlot}h</strong>
+              Entrega objetivo: <strong>${deliverySlot}h</strong> (~${outboundBudget} min ida)<br>
+              Regreso al local antes de las <strong>${nextRoundSlot}h</strong>
             </div>
           </div>
         `;
@@ -768,13 +844,13 @@
         timerHtml = `
           <div class="timer-banner ${semClass}">
             <div style="font-size:0.76rem; font-weight:800; text-transform:uppercase;">
-              1️⃣ FASE IDA + APARCAR + SUBIR AL PISO
+              1️⃣ EN RUTA HACIA EL CLIENTE (${isBikeDelivery ? "🚲 BICI" : "🚗 COCHE"})
             </div>
             <div class="timer-big">${elapsedMin} min <span style="font-size:1.1rem; font-weight:600;">/ ${outboundBudget} min est.</span></div>
             <div style="font-size:0.8rem;">
               ${rem >= 0
-                ? `Tienes <strong>${rem} min</strong> para entregar a tiempo (${deliverySlot}h)`
-                : `🚨 Vas con <strong>+${Math.abs(rem)} min de retraso</strong> sobre la hora de entrega. ¡Marca Entregado en cuanto entregues!`}
+                ? `Tienes <strong>${rem} min</strong> para entregar en horario (${deliverySlot}h)`
+                : `🚨 Vas con <strong>+${Math.abs(rem)} min de retraso</strong> sobre la hora estimada. ¡Marca Entregado al entregar!`}
             </div>
           </div>
         `;
@@ -788,7 +864,7 @@
 
           <div style="margin-top:14px; background:#0f172a; padding:12px; border-radius:12px; border:1px solid #334155;">
             <label style="font-size:0.78rem; font-weight:800; color:#34d399; display:block;">
-              📸 OBLIGATORIO AL ENTREGAR LA PAELLA:
+              📸 CONFIRMAR ENTREGA AL CLIENTE:
             </label>
             <input type="text" id="delivery-proof-input" class="proof-input" placeholder="¿A quién entregas? Ej: Entregado en mano a ${activeOrder.clientName.split(' ')[0]}" value="Entregado en mano a ${activeOrder.clientName.split(' ')[0]}">
             <button class="step-btn btn-delivered" onclick="riderConfirmDelivered('${activeOrder.id}')">
@@ -812,8 +888,8 @@
             <div style="font-size:0.8rem;">
               ✅ Entregaste a las <strong>${formatClock(delivMs)}h</strong><br>
               ${remReturn >= 0
-                ? `Debes llegar al local sobre las <strong>${etaReturnStr}h</strong> para la ronda de las <strong>${nextRoundSlot}h</strong>`
-                : `🚨 ¡ALERTA EN COCINA! Llevas <strong>+${Math.abs(remReturn)} min extra</strong> en la vuelta al local.`}
+                ? `Llegada estimada al local sobre las <strong>${etaReturnStr}h</strong>`
+                : `🚨 Llevas <strong>+${Math.abs(remReturn)} min extra</strong> en la vuelta al local.`}
             </div>
           </div>
         `;
@@ -832,34 +908,38 @@
       }
 
       container.innerHTML = `
+        ${multiOrderSelectorHtml}
         ${timerHtml}
 
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <span style="font-size:0.76rem; font-weight:800; background:#334155; padding:3px 8px; border-radius:6px;">
-              Ronda ${activeOrder.slot}h ➔ Entrega ${deliverySlot}h
+              Salida ${activeOrder.slot}h ➔ Entrega ${deliverySlot}h
             </span>
-            <strong style="color:#10b981;">${activeOrder.total ? activeOrder.total.toFixed(2) + " €" : ""}</strong>
+            <strong style="color:#10b981; font-size:1.05rem;">${activeOrder.total !== undefined ? Number(activeOrder.total).toFixed(2) + " €" : ""}</strong>
           </div>
 
           <h3 style="font-size:1.1rem; font-weight:800;">👤 ${activeOrder.clientName}</h3>
-          <p style="font-size:0.88rem; color:#38bdf8; font-weight:700; margin-top:4px;">📍 ${activeOrder.address}</p>
-          <p style="font-size:0.82rem; color:#94a3b8; margin-top:2px;">📞 <a href="tel:${activeOrder.clientPhone}" style="color:#cbd5e1;">${activeOrder.clientPhone}</a></p>
+          <p style="font-size:0.9rem; color:#38bdf8; font-weight:700; margin-top:4px;">📍 ${activeOrder.address}</p>
+          <p style="font-size:0.84rem; color:#94a3b8; margin-top:4px;">📞 <a href="tel:${activeOrder.clientPhone}" style="color:#34d399; font-weight:800; text-decoration:underline;">Llamar: ${activeOrder.clientPhone}</a></p>
 
-          <div style="background:#0f172a; border-radius:10px; padding:10px; margin-top:10px; font-size:0.84rem; border:1px dashed #334155;">
-            ${activeOrder.items.map(i => `<div>• <strong style="color:#fbbf24;">${i.highlight || i.name}</strong> ${i.notes ? `<br><em style="color:#38bdf8;">Nota: ${i.notes}</em>` : ""}</div>`).join("")}
+          ${formatPaymentCollectBanner(activeOrder)}
+
+          <div style="background:#0f172a; border-radius:10px; padding:10px; margin-top:10px; font-size:0.85rem; border:1px dashed #334155;">
+            ${(activeOrder.items || []).map(i => `<div>• <strong style="color:#fbbf24;">${i.highlight || i.name}</strong> ${i.notes ? `<br><em style="color:#38bdf8;">Nota: ${i.notes}</em>` : ""}</div>`).join("")}
+            ${activeOrder.notes ? `<div style="margin-top:6px; padding-top:6px; border-top:1px solid #1e293b; color:#fde047; font-weight:700;">📝 Nota cliente: ${activeOrder.notes}</div>` : ""}
           </div>
 
           ${actionHtml}
 
           ${nextRoundOrder ? `
             <div class="next-round-alert">
-              ⚠️ <strong>¡TIENES SIGUIENTE PAELLA ASIGNADA A LAS ${nextRoundSlot}H!</strong><br>
-              Al volver a Manuela Malasaña 5 cargas el pedido de <strong>${nextRoundOrder.clientName}</strong> (${nextRoundOrder.address}). ¡No pierdas tiempo en la vuelta!
+              ⚠️ <strong>¡TIENES OTRA ENTREGA ASIGNADA A LAS ${nextRoundOrder.slot}H!</strong><br>
+              Siguiente: <strong>${nextRoundOrder.clientName}</strong> (${nextRoundOrder.address}).
             </div>
           ` : `
             <div class="next-round-alert">
-              🔄 Recuerda: Debes estar de vuelta en Manuela Malasaña 5 antes de las <strong>${nextRoundSlot}h</strong> para entrar en la siguiente ronda.
+              🔄 Recuerda volver a C/ Manuela Malasaña 5 tras entregar para tu siguiente salida.
             </div>
           `}
         </div>
